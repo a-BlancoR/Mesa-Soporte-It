@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mesa de Soporte IT</title>
+<style>
+  :root{
+    --ink:#1c2128;--paper:#f7f5f1;--panel:#ffffff;--line:#dcd7cd;--line-strong:#b9b2a3;
+    --accent:#b5502f;--accent-soft:#f1e3da;--ok:#3f6b4a;--ok-soft:#e3ecdf;
+    --warn:#b8862c;--warn-soft:#f3e7cf;--crit:#9c2f2f;--crit-soft:#f3dcdc;
+    --mono:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;
+    --serif:"Source Serif 4","Georgia",serif;
+    --sans:"IBM Plex Sans","Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.45;}
+  ::selection{background:var(--accent-soft);}
+  .shell{max-width:1280px;margin:0 auto;padding:0 28px 80px;}
+  header.top{border-bottom:2px solid var(--ink);padding:28px 28px 18px;margin-bottom:0;display:flex;align-items:baseline;justify-content:space-between;gap:20px;flex-wrap:wrap;}
+  .brand{display:flex;align-items:baseline;gap:14px;}
+  .brand .mark{font-family:var(--mono);font-size:12px;letter-spacing:.12em;color:var(--accent);border:1px solid var(--accent);padding:3px 7px;border-radius:3px;text-transform:uppercase;}
+  .brand h1{font-family:var(--serif);font-weight:600;font-size:26px;margin:0;letter-spacing:-0.01em;}
+  .brand .sub{font-family:var(--mono);font-size:11.5px;color:#6b6358;letter-spacing:.04em;}
+  .clock{font-family:var(--mono);font-size:12px;color:#6b6358;text-align:right;}
+  .clock strong{color:var(--ink);display:block;font-size:14px;}
+  nav.tabs{display:flex;gap:2px;padding:0 28px;background:var(--paper);border-bottom:1px solid var(--line-strong);}
+  nav.tabs button{font-family:var(--mono);font-size:12.5px;letter-spacing:.03em;text-transform:uppercase;background:none;border:none;cursor:pointer;padding:13px 18px;color:#6b6358;position:relative;top:1px;}
+  nav.tabs button.active{color:var(--ink);border-bottom:2px solid var(--accent);font-weight:600;}
+  nav.tabs button:hover{color:var(--ink);}
+  main{padding-top:26px;}
+  .view{display:none;}
+  .view.active{display:block;}
+  h2.section-title{font-family:var(--serif);font-size:19px;font-weight:600;margin:0 0 16px;display:flex;align-items:center;gap:10px;}
+  h2.section-title .eyebrow{font-family:var(--mono);font-size:11px;color:var(--accent);border-left:2px solid var(--accent);padding-left:8px;letter-spacing:.05em;}
+  button{font-family:var(--sans);cursor:pointer;}
+  .btn{font-family:var(--mono);font-size:12px;letter-spacing:.03em;border:1px solid var(--ink);background:var(--ink);color:var(--paper);padding:9px 16px;border-radius:3px;transition:transform .08s ease;}
+  .btn:hover{background:#000;}
+  .btn:active{transform:translateY(1px);}
+  .btn.secondary{background:transparent;color:var(--ink);border-color:var(--line-strong);}
+  .btn.secondary:hover{background:#fff;border-color:var(--ink);}
+  .btn.danger{background:var(--crit);border-color:var(--crit);}
+  .btn:disabled{opacity:.45;cursor:not-allowed;}
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap;}
+  input,select,textarea{font-family:var(--sans);font-size:13.5px;color:var(--ink);background:#fff;border:1px solid var(--line-strong);border-radius:3px;padding:9px 10px;width:100%;}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent);}
+  label{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#6b6358;display:block;margin-bottom:5px;}
+  .field{margin-bottom:16px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+  @media(max-width:760px){.grid2,.grid3{grid-template-columns:1fr;}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:22px;}
+  .kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:26px;}
+  @media(max-width:900px){.kpi-row{grid-template-columns:repeat(2,1fr);}}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:16px 18px;position:relative;overflow:hidden;}
+  .kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--line-strong);}
+  .kpi.crit::before{background:var(--crit);}
+  .kpi.warn::before{background:var(--warn);}
+  .kpi.ok::before{background:var(--ok);}
+  .kpi .num{font-family:var(--serif);font-size:30px;font-weight:600;line-height:1;}
+  .kpi .lab{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:#6b6358;margin-top:6px;}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:18px;}
+  .toolbar .field{margin-bottom:0;min-width:150px;flex:1;}
+  .toolbar .field.grow{flex:2;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  thead th{text-align:left;font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:#6b6358;border-bottom:2px solid var(--ink);padding:9px 10px;cursor:pointer;user-select:none;white-space:nowrap;}
+  thead th:hover{color:var(--ink);}
+  tbody td{padding:11px 10px;border-bottom:1px solid var(--line);vertical-align:top;}
+  tbody tr:hover{background:#fbf9f6;}
+  tbody tr{cursor:pointer;}
+  .empty-row td{text-align:center;padding:50px 10px;color:#6b6358;font-family:var(--mono);font-size:12px;cursor:default;}
+  .pill{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:.03em;text-transform:uppercase;padding:3px 8px;border-radius:3px;white-space:nowrap;}
+  .pill.pr-baja{background:#eee;color:#555;}
+  .pill.pr-media{background:var(--warn-soft);color:#8a651e;}
+  .pill.pr-alta{background:#f6dcc4;color:#9a4a16;}
+  .pill.pr-cr-tica,.pill.pr-crítica{background:var(--crit-soft);color:var(--crit);}
+  .pill.st-abierto{background:var(--crit-soft);color:var(--crit);}
+  .pill.st-en-proceso{background:var(--warn-soft);color:#8a651e;}
+  .pill.st-resuelto{background:var(--ok-soft);color:var(--ok);}
+  .pill.st-cerrado{background:#e7e7e3;color:#54524a;}
+  .ticket-id{font-family:var(--mono);color:#6b6358;font-size:12px;}
+  .overlay{position:fixed;inset:0;background:rgba(28,33,40,.45);display:none;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto;z-index:50;}
+  .overlay.active{display:flex;}
+  .modal{background:var(--panel);border-radius:6px;max-width:640px;width:100%;padding:30px 30px 26px;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+  .modal h3{font-family:var(--serif);font-size:20px;margin:0 0 4px;}
+  .modal .modal-sub{font-family:var(--mono);font-size:11px;color:#6b6358;margin-bottom:22px;}
+  .modal-close{float:right;background:none;border:none;font-size:20px;color:#999;line-height:1;}
+  .modal-close:hover{color:var(--ink);}
+  .divider{border:none;border-top:1px solid var(--line);margin:20px 0;}
+  .ticket-detail-meta{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:18px;}
+  .ticket-detail-meta .m{font-size:12.5px;}
+  .ticket-detail-meta .m .l{font-family:var(--mono);font-size:10px;text-transform:uppercase;color:#6b6358;letter-spacing:.04em;}
+  .desc-box{background:#fbf9f6;border:1px solid var(--line);border-radius:4px;padding:14px;font-size:13.5px;white-space:pre-wrap;margin-bottom:18px;}
+  .cat-list{list-style:none;margin:0;padding:0;}
+  .cat-list li{display:flex;justify-content:space-between;align-items:center;padding:10px 4px;border-bottom:1px solid var(--line);font-size:13.5px;}
+  .cat-list li .tag{font-family:var(--mono);font-size:10.5px;color:#6b6358;}
+  .cat-list .remove-btn{background:none;border:none;color:var(--crit);font-family:var(--mono);font-size:11px;}
+  .cat-list .remove-btn:hover{text-decoration:underline;}
+  .add-inline{display:flex;gap:8px;margin-top:14px;}
+  .add-inline input{flex:1;}
+  .col3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;align-items:start;}
+  @media(max-width:900px){.col3{grid-template-columns:1fr;}}
+  .tech-card{background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:18px 20px;margin-bottom:12px;}
+  .tech-card .row1{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;}
+  .tech-card .name{font-family:var(--serif);font-size:16px;font-weight:600;}
+  .tech-card .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+  @media(max-width:760px){.tech-card .stat-grid{grid-template-columns:repeat(2,1fr);}}
+  .tech-card .stat .v{font-family:var(--mono);font-size:18px;font-weight:600;}
+  .tech-card .stat .l{font-family:var(--mono);font-size:9.5px;text-transform:uppercase;color:#6b6358;letter-spacing:.03em;}
+  .bar-track{height:6px;background:#ece8e0;border-radius:3px;margin-top:10px;overflow:hidden;}
+  .bar-fill{height:100%;background:var(--accent);border-radius:3px;}
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--ink);color:var(--paper);padding:12px 18px;border-radius:4px;font-family:var(--mono);font-size:12.5px;opacity:0;transform:translateY(8px);transition:all .25s ease;z-index:100;}
+  .toast.show{opacity:1;transform:translateY(0);}
+  .small-note{font-family:var(--mono);font-size:11px;color:#6b6358;margin-top:6px;}
+  .loading-screen{position:fixed;inset:0;background:var(--paper);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;z-index:200;}
+  .loading-screen .l1{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--accent);text-transform:uppercase;}
+  .loading-screen .l2{font-family:var(--serif);font-size:20px;}
+  .sync-dot{width:8px;height:8px;border-radius:50%;background:#aaa;display:inline-block;margin-left:8px;vertical-align:middle;}
+  .sync-dot.ok{background:var(--ok);}
+  .sync-dot.err{background:var(--crit);}
+  .sync-dot.busy{background:var(--warn);animation:pulse .7s infinite alternate;}
+  @keyframes pulse{to{opacity:.3;}}
+</style>
+</head>
+<body>
+
+<div class="loading-screen" id="loadingScreen">
+  <div class="l1">Mesa de Soporte IT</div>
+  <div class="l2">Conectando con la base de datos&hellip;</div>
+</div>
+
+<div class="shell" id="appShell" style="display:none;">
+  <header class="top">
+    <div class="brand">
+      <span class="mark">IT&middot;01</span>
+      <div>
+        <h1>Mesa de Soporte <span class="sync-dot" id="syncDot" title="Estado de conexión"></span></h1>
+        <div class="sub">Bitácora de tickets &amp; productividad técnica</div>
+      </div>
+    </div>
+    <div class="clock">
+      <strong id="clockDate">&nbsp;</strong>
+      <span id="clockTime">&nbsp;</span>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-view="dashboard">Tablero</button>
+    <button class="tab-btn" data-view="tickets">Tickets</button>
+    <button class="tab-btn" data-view="metrics">Productividad</button>
+    <button class="tab-btn" data-view="catalogs">Catálogos</button>
+  </nav>
+
+  <main>
+    <!-- DASHBOARD -->
+    <section class="view active" id="view-dashboard">
+      <h2 class="section-title"><span class="eyebrow">Resumen</span> Estado general</h2>
+      <div class="kpi-row" id="kpiRow"></div>
+      <div class="col3">
+        <div class="panel" style="grid-column:span 2;">
+          <h2 class="section-title" style="font-size:15px;">Tickets abiertos &amp; en proceso</h2>
+          <table><thead><tr><th>Folio</th><th>Solicitante</th><th>Prioridad</th><th>Estado</th><th>Colaborador</th></tr></thead>
+          <tbody id="dashOpenTable"></tbody></table>
+        </div>
+        <div class="panel">
+          <h2 class="section-title" style="font-size:15px;">Acción rápida</h2>
+          <p style="font-size:13px;color:#54524a;margin-top:0;">Registra una solicitud apenas llegue al correo de soporte, así no se te acumulan ni se pierden.</p>
+          <button class="btn" style="width:100%;" id="quickNewTicket">+ Nuevo ticket</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TICKETS -->
+    <section class="view" id="view-tickets">
+      <h2 class="section-title"><span class="eyebrow">Bitácora</span> Todos los tickets</h2>
+      <div class="toolbar">
+        <div class="field grow"><label>Buscar</label><input type="text" id="searchInput" placeholder="Folio, solicitante, descripción..."></div>
+        <div class="field"><label>Estado</label>
+          <select id="filterStatus"><option value="">Todos</option><option>Abierto</option><option>En proceso</option><option>Resuelto</option><option>Cerrado</option></select>
+        </div>
+        <div class="field"><label>Prioridad</label>
+          <select id="filterPriority"><option value="">Todas</option><option>Baja</option><option>Media</option><option>Alta</option><option>Crítica</option></select>
+        </div>
+        <div class="field"><label>Personal de Informática</label>
+          <select id="filterTech"><option value="">Todos</option></select>
+        </div>
+        <button class="btn secondary" id="reportBtn" disabled>&#128438; Reporte</button>
+        <button class="btn" id="openNewTicketBtn">+ Nuevo ticket</button>
+      </div>
+      <div class="panel" style="padding:0;overflow-x:auto;">
+        <table>
+          <thead><tr>
+            <th data-sort="id">Folio</th><th data-sort="requester">Solicitante</th>
+            <th data-sort="department">Depto.</th><th data-sort="priority">Prioridad</th>
+            <th data-sort="status">Estado</th><th data-sort="technician">Colaborador</th>
+            <th data-sort="created_at">Solicitado</th><th data-sort="resolved_at">Resuelto</th>
+          </tr></thead>
+          <tbody id="ticketsTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- METRICS -->
+    <section class="view" id="view-metrics">
+      <h2 class="section-title"><span class="eyebrow">Desempeño</span> Productividad por colaborador</h2>
+      <div id="metricsContainer"></div>
+    </section>
+
+    <!-- CATALOGS -->
+    <section class="view" id="view-catalogs">
+      <h2 class="section-title"><span class="eyebrow">Administración</span> Catálogos maestros</h2>
+      <p style="font-size:12.5px;color:#6b6358;margin-top:-8px;">Agrega aquí los nombres una sola vez para mantener las métricas confiables.</p>
+      <div class="col3">
+        <div class="panel">
+          <h2 class="section-title" style="font-size:14px;">Personal de Informática</h2>
+          <ul class="cat-list" id="techList"></ul>
+          <div class="add-inline">
+            <input type="text" id="newTechInput" placeholder="Nombre del colaborador">
+            <button class="btn secondary" id="addTechBtn">Agregar</button>
+          </div>
+        </div>
+        <div class="panel">
+          <h2 class="section-title" style="font-size:14px;">Departamentos</h2>
+          <ul class="cat-list" id="deptList"></ul>
+          <div class="add-inline">
+            <input type="text" id="newDeptInput" placeholder="Nombre del departamento">
+            <button class="btn secondary" id="addDeptBtn">Agregar</button>
+          </div>
+        </div>
+        <div class="panel">
+          <h2 class="section-title" style="font-size:14px;">Usuarios solicitantes</h2>
+          <ul class="cat-list" id="userList"></ul>
+          <div class="add-inline" style="flex-direction:column;gap:8px;">
+            <input type="text" id="newUserInput" placeholder="Nombre del usuario">
+            <select id="newUserDept"><option value="">Departamento</option></select>
+            <button class="btn secondary" id="addUserBtn" style="width:100%;">Agregar usuario</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="overlay" id="ticketOverlay"><div class="modal" id="ticketModal"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+
+const SB_URL = 'https://yvkycguwkchikrgbxyxa.supabase.co';
+const SB_KEY = 'sb_publishable_ewrWWuX-JGoMlTlxbVXr5A_oeRllP1j';
+
+const hdr = { 'Content-Type':'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY };
+
+function buildQuery(params){
+  if(!params) return '';
+  const parts = Object.entries(params).map(([k,v])=> `${encodeURIComponent(k)}=${encodeURIComponent(v)}`);
+  return parts.length ? '?' + parts.join('&') : '';
+}
+
+async function sbGet(table, params){
+  const order = table === 'tickets' ? 'created_at.desc' : 'name.asc';
+  const qs = buildQuery({ ...params, order });
+  const r = await fetch(`${SB_URL}/rest/v1/${table}${qs}`, { headers: { ...hdr, 'Prefer':'return=representation' } });
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function sbPost(table, body){
+  const r = await fetch(`${SB_URL}/rest/v1/${table}`, {
+    method:'POST', headers:{ ...hdr,'Prefer':'return=representation' }, body: JSON.stringify(body)
+  });
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function sbPatch(table, match, body){
+  const qs = buildQuery(Object.fromEntries(Object.entries(match).map(([k,v])=>[k,`eq.${v}`])));
+  const r = await fetch(`${SB_URL}/rest/v1/${table}${qs}`, {
+    method:'PATCH', headers:{ ...hdr,'Prefer':'return=representation' }, body: JSON.stringify(body)
+  });
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function sbDelete(table, match){
+  const qs = buildQuery(Object.fromEntries(Object.entries(match).map(([k,v])=>[k,`eq.${v}`])));
+  const r = await fetch(`${SB_URL}/rest/v1/${table}${qs}`, { method:'DELETE', headers: hdr });
+  if(!r.ok) throw new Error(await r.text());
+}
+
+async function nextId(){
+  const r = await fetch(`${SB_URL}/rest/v1/rpc/nextval`, {
+    method:'POST', headers: hdr, body: JSON.stringify({ sequence_name:'ticket_seq' })
+  });
+  if(!r.ok){
+    // fallback: timestamp-based
+    return `TK-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
+  }
+  const n = await r.json();
+  return `TK-${new Date().getFullYear()}-${String(n).padStart(4,'0')}`;
+}
+
+/* ---- Estado en memoria (caché) ---- */
+let TICKETS=[], TECHS=[], DEPTS=[], REQUESTERS=[];
+
+function setSyncDot(state){ // 'ok' | 'err' | 'busy'
+  const d = document.getElementById('syncDot');
+  d.className = 'sync-dot ' + state;
+  d.title = state==='ok'?'Conectado':state==='err'?'Error de conexión':'Guardando…';
+}
+
+async function loadAll(){
+  setSyncDot('busy');
+  [TICKETS, TECHS, DEPTS, REQUESTERS] = await Promise.all([
+    sbGet('tickets'), sbGet('technicians'), sbGet('departments'), sbGet('requesters')
+  ]);
+  setSyncDot('ok');
+}
+
+/* ---- Utilidades ---- */
+function fmtDateTime(iso){
+  if(!iso) return '—';
+  const d = new Date(iso);
+  if(isNaN(d)) return '—';
+  return d.toLocaleString('es-MX',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+function hoursBetween(a,b){
+  if(!a||!b) return null;
+  const ms = new Date(b)-new Date(a);
+  return isNaN(ms)||ms<0?null:ms/36e5;
+}
+function fmtHours(h){
+  if(h===null||isNaN(h)) return '—';
+  if(h<1) return Math.round(h*60)+' min';
+  if(h<48) return h.toFixed(1)+' h';
+  return (h/24).toFixed(1)+' días';
+}
+function slugify(s){ return (s||'').toLowerCase().trim().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,''); }
+function escapeHtml(s){ return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2400); }
+function priorityWeight(p){ return{Crítica:4,Alta:3,Media:2,Baja:1}[p]||0; }
+
+function nowLocalInputValue(){
+  const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
+  return d.toISOString().slice(0,16);
+}
+
+/* ---- Clock ---- */
+function tickClock(){
+  const d=new Date();
+  document.getElementById('clockDate').textContent=d.toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('clockTime').textContent=d.toLocaleTimeString('es-MX');
+}
+
+/* ---- Tabs ---- */
+function setupTabs(){
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('view-'+btn.dataset.view).classList.add('active');
+      if(btn.dataset.view==='dashboard') renderDashboard();
+      if(btn.dataset.view==='tickets') renderTicketsTable();
+      if(btn.dataset.view==='metrics') renderMetrics();
+      if(btn.dataset.view==='catalogs') renderCatalogs();
+    });
+  });
+}
+function goToView(name){ document.querySelector(`.tab-btn[data-view="${name}"]`).click(); }
+
+/* ---- Dashboard ---- */
+function renderDashboard(){
+  const open = TICKETS.filter(t=>t.status==='Abierto'||t.status==='En proceso');
+  const critical = open.filter(t=>t.priority==='Crítica');
+  const times = TICKETS.filter(t=>t.resolved_at).map(t=>hoursBetween(t.created_at,t.resolved_at)).filter(h=>h!==null);
+  const avg = times.length ? times.reduce((a,b)=>a+b,0)/times.length : null;
+  const today = new Date().toDateString();
+  const closedToday = TICKETS.filter(t=>t.resolved_at && new Date(t.resolved_at).toDateString()===today);
+
+  document.getElementById('kpiRow').innerHTML = [
+    {num:open.length,lab:'Tickets abiertos',cls:open.length>0?'warn':'ok'},
+    {num:critical.length,lab:'Prioridad crítica',cls:critical.length>0?'crit':'ok'},
+    {num:TICKETS.length,lab:'Total histórico',cls:''},
+    {num:closedToday.length,lab:'Resueltos hoy',cls:'ok'},
+    {num:avg!==null?fmtHours(avg):'—',lab:'Tiempo prom. resolución',cls:''},
+  ].map(k=>`<div class="kpi ${k.cls}"><div class="num">${k.num}</div><div class="lab">${k.lab}</div></div>`).join('');
+
+  const sorted = open.slice().sort((a,b)=>priorityWeight(b.priority)-priorityWeight(a.priority));
+  document.getElementById('dashOpenTable').innerHTML = sorted.slice(0,8).map(t=>`
+    <tr onclick="window.__openTicket('${t.id}')">
+      <td class="ticket-id">${t.id}</td><td>${escapeHtml(t.requester)}</td>
+      <td><span class="pill pr-${slugify(t.priority)}">${t.priority}</span></td>
+      <td><span class="pill st-${slugify(t.status)}">${t.status}</span></td>
+      <td>${escapeHtml(t.technician||'Sin asignar')}</td>
+    </tr>`).join('') || `<tr class="empty-row"><td colspan="5">No hay tickets abiertos.</td></tr>`;
+}
+
+/* ---- Tickets table ---- */
+let sortState={key:'created_at',dir:-1};
+
+function populateFilterTech(){
+  const sel=document.getElementById('filterTech');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">Todos</option>'+TECHS.map(t=>`<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`).join('');
+  sel.value=cur;
+}
+
+function getFiltered(){
+  const q=document.getElementById('searchInput').value.trim().toLowerCase();
+  const fS=document.getElementById('filterStatus').value;
+  const fP=document.getElementById('filterPriority').value;
+  const fT=document.getElementById('filterTech').value;
+  return TICKETS.filter(t=>{
+    if(fS&&t.status!==fS) return false;
+    if(fP&&t.priority!==fP) return false;
+    if(fT&&t.technician!==fT) return false;
+    if(q&&!`${t.id} ${t.requester} ${t.department} ${t.description}`.toLowerCase().includes(q)) return false;
+    return true;
+  }).sort((a,b)=>{
+    let av=a[sortState.key],bv=b[sortState.key];
+    if(sortState.key==='priority'){av=priorityWeight(av);bv=priorityWeight(bv);}
+    av=av??''; bv=bv??'';
+    return av<bv?-sortState.dir:av>bv?sortState.dir:0;
+  });
+}
+
+function renderTicketsTable(){
+  populateFilterTech();
+  const list=getFiltered();
+  document.getElementById('ticketsTableBody').innerHTML = list.map(t=>`
+    <tr onclick="window.__openTicket('${t.id}')">
+      <td class="ticket-id">${t.id}</td><td>${escapeHtml(t.requester)}</td>
+      <td>${escapeHtml(t.department)}</td>
+      <td><span class="pill pr-${slugify(t.priority)}">${t.priority}</span></td>
+      <td><span class="pill st-${slugify(t.status)}">${t.status}</span></td>
+      <td>${escapeHtml(t.technician||'Sin asignar')}</td>
+      <td>${fmtDateTime(t.created_at)}</td><td>${fmtDateTime(t.resolved_at)}</td>
+    </tr>`).join('') || `<tr class="empty-row"><td colspan="8">No hay tickets que coincidan.</td></tr>`;
+}
+
+function setupTicketTableEvents(){
+  document.getElementById('searchInput').addEventListener('input',renderTicketsTable);
+  document.getElementById('filterStatus').addEventListener('change',renderTicketsTable);
+  document.getElementById('filterPriority').addEventListener('change',renderTicketsTable);
+  document.getElementById('filterTech').addEventListener('change',()=>{
+    renderTicketsTable();
+    document.getElementById('reportBtn').disabled = !document.getElementById('filterTech').value;
+  });
+  document.querySelectorAll('th[data-sort]').forEach(th=>{
+    th.addEventListener('click',()=>{
+      const k=th.dataset.sort;
+      if(sortState.key===k) sortState.dir*=-1; else{sortState.key=k;sortState.dir=1;}
+      renderTicketsTable();
+    });
+  });
+  document.getElementById('reportBtn').addEventListener('click', generateReport);
+}
+
+function generateReport(){
+  const name = document.getElementById('filterTech').value;
+  if(!name) return;
+  const list = TICKETS.filter(t=>t.technician===name);
+  const resolved = list.filter(t=>t.resolved_at);
+  const times = resolved.map(t=>hoursBetween(t.created_at,t.resolved_at)).filter(h=>h!==null);
+  const avg = times.length?times.reduce((a,b)=>a+b,0)/times.length:null;
+  const now = new Date().toLocaleString('es-MX',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const rows = list.map(t=>`<tr><td>${escapeHtml(t.id)}</td><td>${escapeHtml(t.requester)}</td><td>${escapeHtml(t.department)}</td><td>${escapeHtml(t.priority)}</td><td>${escapeHtml(t.status)}</td><td>${fmtDateTime(t.created_at)}</td><td>${fmtDateTime(t.resolved_at)}</td><td>${t.resolved_at?fmtHours(hoursBetween(t.created_at,t.resolved_at)):'—'}</td></tr>`).join('');
+  const html=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Reporte — ${name}</title>
+  <style>body{font-family:Arial,sans-serif;font-size:12px;padding:30px;}h1{font-size:18px;margin-bottom:2px;}.sub{color:#666;margin-bottom:18px;font-size:11px;}.kpis{display:flex;gap:30px;margin-bottom:20px;}.kpi .n{font-size:26px;font-weight:bold;line-height:1;}.kpi .l{font-size:10px;color:#666;text-transform:uppercase;}table{width:100%;border-collapse:collapse;font-size:11px;}th{background:#111;color:#fff;padding:6px 8px;text-align:left;font-size:10px;text-transform:uppercase;}td{padding:6px 8px;border-bottom:1px solid #ddd;}tr:nth-child(even) td{background:#f7f7f5;}.footer{margin-top:18px;font-size:10px;color:#888;}</style></head><body>
+  <h1>Reporte — ${escapeHtml(name)}</h1><div class="sub">Generado el ${now} | Mesa de Soporte IT</div>
+  <div class="kpis">
+    <div class="kpi"><div class="n">${list.length}</div><div class="l">Total asignados</div></div>
+    <div class="kpi"><div class="n">${resolved.length}</div><div class="l">Resueltos</div></div>
+    <div class="kpi"><div class="n">${list.length-resolved.length}</div><div class="l">Abiertos/en proceso</div></div>
+    <div class="kpi"><div class="n">${avg!==null?fmtHours(avg):'—'}</div><div class="l">Tiempo prom.</div></div>
+  </div>
+  <table><thead><tr><th>Folio</th><th>Solicitante</th><th>Depto.</th><th>Prioridad</th><th>Estado</th><th>Solicitado</th><th>Resuelto</th><th>Tiempo</th></tr></thead>
+  <tbody>${rows||'<tr><td colspan="8" style="text-align:center;padding:20px;color:#999;">Sin tickets asignados</td></tr>'}</tbody></table>
+  <div class="footer">Mesa de Soporte IT — Reporte individual</div>
+  <script>window.print();<\/script></body></html>`;
+  const w=window.open('','_blank'); w.document.write(html); w.document.close();
+}
+
+/* ---- Modal: nuevo ticket ---- */
+function openNewTicketModal(){
+  const techOpts = TECHS.map(t=>`<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`).join('');
+  const modal = document.getElementById('ticketModal');
+  modal.innerHTML=`
+    <button class="modal-close" id="closeModalBtn">&times;</button>
+    <h3>Nuevo ticket</h3>
+    <div class="modal-sub">Captura los datos tal como llegaron en la solicitud</div>
+    <div class="field">
+      <label>Usuario solicitante</label>
+      <select id="reqSelect">
+        <option value="">— Seleccionar usuario existente —</option>
+        ${REQUESTERS.map(r=>`<option value="${escapeHtml(r.name)}" data-dept="${escapeHtml(r.department)}">${escapeHtml(r.name)} (${escapeHtml(r.department)})</option>`).join('')}
+        <option value="__new__">+ Usuario nuevo…</option>
+      </select>
+      <div id="newReqFields" style="display:none;margin-top:10px;">
+        <input type="text" id="newReqName" placeholder="Nombre completo del usuario nuevo" style="margin-bottom:8px;">
+        <select id="newReqDept"><option value="">Departamento</option>${DEPTS.map(d=>`<option>${escapeHtml(d.name)}</option>`).join('')}</select>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Departamento</label><input type="text" id="reqDeptDisplay" disabled placeholder="Se completa al elegir usuario"></div>
+      <div class="field"><label>Prioridad</label>
+        <select id="newPriority"><option>Baja</option><option selected>Media</option><option>Alta</option><option>Crítica</option></select>
+      </div>
+    </div>
+    <div class="field"><label>Descripción del problema</label><textarea id="newDescription" rows="4" placeholder="Describe el problema reportado…"></textarea></div>
+    <div class="grid2">
+      <div class="field"><label>Fecha y hora de la solicitud</label><input type="datetime-local" id="newCreatedAt"></div>
+      <div class="field"><label>Colaborador asignado (opcional)</label>
+        <select id="newTechnician"><option value="">Sin asignar</option>${techOpts}</select>
+      </div>
+    </div>
+    <hr class="divider">
+    <div class="btn-row">
+      <button class="btn" id="saveNewTicketBtn">Guardar ticket</button>
+      <button class="btn secondary" id="cancelNewTicketBtn">Cancelar</button>
+    </div>`;
+
+  document.getElementById('newCreatedAt').value = nowLocalInputValue();
+  document.getElementById('reqSelect').addEventListener('change', e=>{
+    const v=e.target.value;
+    document.getElementById('newReqFields').style.display = v==='__new__'?'block':'none';
+    document.getElementById('reqDeptDisplay').value = v&&v!=='__new__' ? (e.target.selectedOptions[0].dataset.dept||'') : '';
+  });
+  document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+  document.getElementById('cancelNewTicketBtn').addEventListener('click', closeModal);
+  document.getElementById('saveNewTicketBtn').addEventListener('click', saveNewTicket);
+  openModal();
+}
+
+async function saveNewTicket(){
+  const sel = document.getElementById('reqSelect');
+  let requester='', department='';
+  if(sel.value==='__new__'){
+    requester = document.getElementById('newReqName').value.trim();
+    department = document.getElementById('newReqDept').value;
+    if(!requester){ showToast('Escribe el nombre del usuario nuevo'); return; }
+    if(!department){ showToast('Selecciona el departamento'); return; }
+    if(!REQUESTERS.some(r=>r.name.toLowerCase()===requester.toLowerCase())){
+      setSyncDot('busy');
+      await sbPost('requesters',{name:requester,department});
+      REQUESTERS.push({name:requester,department});
+      setSyncDot('ok');
+    }
+  } else if(!sel.value){ showToast('Selecciona o agrega un usuario'); return; }
+  else { requester=sel.value; department=sel.selectedOptions[0].dataset.dept||''; }
+
+  const description = document.getElementById('newDescription').value.trim();
+  if(!description){ showToast('Describe el problema'); return; }
+  const createdRaw = document.getElementById('newCreatedAt').value;
+  if(!createdRaw){ showToast('Indica la fecha y hora de la solicitud'); return; }
+
+  setSyncDot('busy');
+  const id = await nextId();
+  const ticket = {
+    id, requester, department, description,
+    priority: document.getElementById('newPriority').value,
+    status: 'Abierto',
+    technician: document.getElementById('newTechnician').value||'',
+    created_at: new Date(createdRaw).toISOString(),
+    resolved_at: null,
+    log: [{at:new Date().toISOString(),text:'Ticket creado'}]
+  };
+  await sbPost('tickets', ticket);
+  TICKETS.unshift(ticket);
+  setSyncDot('ok');
+  closeModal();
+  showToast(`Ticket ${id} registrado`);
+  refreshAllViews();
+}
+
+/* ---- Modal: detalle ticket ---- */
+function openTicketDetail(id){
+  const t = TICKETS.find(x=>x.id===id);
+  if(!t) return;
+  const techOpts = TECHS.map(tech=>`<option value="${escapeHtml(tech.name)}" ${tech.name===t.technician?'selected':''}>${escapeHtml(tech.name)}</option>`).join('');
+  const statusOpts = ['Abierto','En proceso','Resuelto','Cerrado'].map(s=>`<option ${s===t.status?'selected':''}>${s}</option>`).join('');
+  const priorityOpts = ['Baja','Media','Alta','Crítica'].map(p=>`<option ${p===t.priority?'selected':''}>${p}</option>`).join('');
+  const resTime = t.resolved_at ? hoursBetween(t.created_at,t.resolved_at) : null;
+
+  document.getElementById('ticketModal').innerHTML=`
+    <button class="modal-close" id="closeModalBtn">&times;</button>
+    <h3>${t.id}</h3>
+    <div class="modal-sub">Solicitado por ${escapeHtml(t.requester)} · ${escapeHtml(t.department)}</div>
+    <div class="ticket-detail-meta">
+      <div class="m"><div class="l">Solicitado</div>${fmtDateTime(t.created_at)}</div>
+      <div class="m"><div class="l">Resuelto</div>${t.resolved_at?fmtDateTime(t.resolved_at):'—'}</div>
+      <div class="m"><div class="l">Tiempo de respuesta</div>${resTime!==null?fmtHours(resTime):'—'}</div>
+    </div>
+    <div class="desc-box">${escapeHtml(t.description)}</div>
+    <div class="grid3">
+      <div class="field"><label>Prioridad</label><select id="editPriority">${priorityOpts}</select></div>
+      <div class="field"><label>Estado</label><select id="editStatus">${statusOpts}</select></div>
+      <div class="field"><label>Colaborador asignado</label><select id="editTechnician"><option value="">Sin asignar</option>${techOpts}</select></div>
+    </div>
+    <div class="small-note" id="resolveHint" style="display:none;">Se registrará la hora actual como hora de solución.</div>
+    <hr class="divider">
+    <div class="btn-row">
+      <button class="btn" id="saveTicketEditBtn">Guardar cambios</button>
+      <button class="btn secondary" id="closeModalBtn2">Cerrar</button>
+      <button class="btn danger" id="deleteTicketBtn" style="margin-left:auto;">Eliminar</button>
+    </div>`;
+
+  const statusSel=document.getElementById('editStatus');
+  const hint=document.getElementById('resolveHint');
+  statusSel.addEventListener('change',()=>{
+    hint.style.display=((statusSel.value==='Resuelto'||statusSel.value==='Cerrado')&&!t.resolved_at)?'block':'none';
+  });
+
+  document.getElementById('closeModalBtn').addEventListener('click',closeModal);
+  document.getElementById('closeModalBtn2').addEventListener('click',closeModal);
+
+  document.getElementById('saveTicketEditBtn').addEventListener('click', async ()=>{
+    const newStatus=statusSel.value;
+    const updates={
+      priority: document.getElementById('editPriority').value,
+      status: newStatus,
+      technician: document.getElementById('editTechnician').value||''
+    };
+    if((newStatus==='Resuelto'||newStatus==='Cerrado')&&!t.resolved_at){
+      updates.resolved_at = new Date().toISOString();
+    } else if(newStatus!=='Resuelto'&&newStatus!=='Cerrado'){
+      updates.resolved_at = null;
+    }
+    updates.log = [...(t.log||[]), {at:new Date().toISOString(),text:`Actualizado: ${newStatus}`}];
+    setSyncDot('busy');
+    await sbPatch('tickets',{id:t.id},updates);
+    Object.assign(t, updates);
+    setSyncDot('ok');
+    closeModal();
+    showToast(`Ticket ${t.id} actualizado`);
+    refreshAllViews();
+  });
+
+  document.getElementById('deleteTicketBtn').addEventListener('click', async ()=>{
+    if(!confirm(`¿Eliminar definitivamente el ticket ${t.id}?`)) return;
+    setSyncDot('busy');
+    await sbDelete('tickets',{id:t.id});
+    TICKETS = TICKETS.filter(x=>x.id!==t.id);
+    setSyncDot('ok');
+    closeModal();
+    showToast(`Ticket ${t.id} eliminado`);
+    refreshAllViews();
+  });
+
+  openModal();
+}
+window.__openTicket = openTicketDetail;
+
+function openModal(){ document.getElementById('ticketOverlay').classList.add('active'); }
+function closeModal(){ document.getElementById('ticketOverlay').classList.remove('active'); }
+
+/* ---- Metrics ---- */
+function renderMetrics(){
+  const real = TECHS.filter(t=>t.name!=='Sin asignar');
+  if(!real.length){
+    document.getElementById('metricsContainer').innerHTML=`<div class="panel"><p style="margin:0;color:#6b6358;font-family:var(--mono);font-size:12.5px;">Agrega colaboradores en Catálogos para ver sus métricas.</p></div>`;
+    return;
+  }
+  const maxRes = Math.max(1,...real.map(t=>TICKETS.filter(k=>k.technician===t.name&&k.resolved_at).length));
+  document.getElementById('metricsContainer').innerHTML = real.map(({name})=>{
+    const own=TICKETS.filter(t=>t.technician===name);
+    const resolved=own.filter(t=>t.resolved_at);
+    const times=resolved.map(t=>hoursBetween(t.created_at,t.resolved_at)).filter(h=>h!==null);
+    const avg=times.length?times.reduce((a,b)=>a+b,0)/times.length:null;
+    const pct=Math.round(resolved.length/maxRes*100);
+    return `<div class="tech-card">
+      <div class="row1"><div class="name">${escapeHtml(name)}</div><div class="small-note" style="margin:0;">${own.length} ticket${own.length!==1?'s':''} asignados</div></div>
+      <div class="stat-grid">
+        <div class="stat"><div class="v">${resolved.length}</div><div class="l">Resueltos</div></div>
+        <div class="stat"><div class="v">${own.length-resolved.length}</div><div class="l">Abiertos/proceso</div></div>
+        <div class="stat"><div class="v">${avg!==null?fmtHours(avg):'—'}</div><div class="l">Tiempo prom.</div></div>
+        <div class="stat"><div class="v">${own.filter(t=>t.priority==='Crítica').length}</div><div class="l">Críticos</div></div>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;"></div></div>
+    </div>`;
+  }).join('');
+}
+
+/* ---- Catalogs ---- */
+function renderCatalogs(){
+  renderTechList(); renderDeptList(); renderUserList();
+  const sel=document.getElementById('newUserDept');
+  sel.innerHTML='<option value="">Departamento</option>'+DEPTS.map(d=>`<option>${escapeHtml(d.name)}</option>`).join('');
+}
+
+function renderTechList(){
+  document.getElementById('techList').innerHTML=TECHS.map(({name})=>{
+    const used=TICKETS.filter(t=>t.technician===name).length;
+    const btn=name==='Sin asignar'?'':` <button class="remove-btn" data-name="${escapeHtml(name)}">Quitar</button>`;
+    return `<li><span>${escapeHtml(name)} <span class="tag">(${used} ticket${used!==1?'s':''})</span></span>${btn}</li>`;
+  }).join('');
+  document.querySelectorAll('#techList .remove-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const name=btn.dataset.name;
+      if(TICKETS.some(t=>t.technician===name)){ showToast(`No se puede quitar: tiene tickets asignados`); return; }
+      setSyncDot('busy'); await sbDelete('technicians',{name}); TECHS=TECHS.filter(t=>t.name!==name); setSyncDot('ok');
+      renderCatalogs(); showToast(`"${name}" eliminado`);
+    });
+  });
+}
+
+function renderDeptList(){
+  document.getElementById('deptList').innerHTML=DEPTS.map(({name})=>{
+    const used=TICKETS.filter(t=>t.department===name).length;
+    const btn=name==='Sin especificar'?'':` <button class="remove-btn" data-name="${escapeHtml(name)}">Quitar</button>`;
+    return `<li><span>${escapeHtml(name)} <span class="tag">(${used} ticket${used!==1?'s':''})</span></span>${btn}</li>`;
+  }).join('');
+  document.querySelectorAll('#deptList .remove-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const name=btn.dataset.name;
+      if(TICKETS.some(t=>t.department===name)||REQUESTERS.some(r=>r.department===name)){ showToast('No se puede quitar: está en uso'); return; }
+      setSyncDot('busy'); await sbDelete('departments',{name}); DEPTS=DEPTS.filter(d=>d.name!==name); setSyncDot('ok');
+      renderCatalogs(); showToast(`"${name}" eliminado`);
+    });
+  });
+}
+
+function renderUserList(){
+  document.getElementById('userList').innerHTML=REQUESTERS.map(({name,department})=>{
+    const used=TICKETS.filter(t=>t.requester===name).length;
+    return `<li><span>${escapeHtml(name)} <span class="tag">(${escapeHtml(department)} · ${used} ticket${used!==1?'s':''})</span></span><button class="remove-btn" data-name="${escapeHtml(name)}">Quitar</button></li>`;
+  }).join('');
+  document.querySelectorAll('#userList .remove-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const name=btn.dataset.name;
+      if(TICKETS.some(t=>t.requester===name)){ showToast('No se puede quitar: tiene tickets registrados'); return; }
+      setSyncDot('busy'); await sbDelete('requesters',{name}); REQUESTERS=REQUESTERS.filter(r=>r.name!==name); setSyncDot('ok');
+      renderCatalogs(); showToast(`"${name}" eliminado`);
+    });
+  });
+}
+
+function setupCatalogEvents(){
+  async function addItem(inputId, list, table, makeObj, refresh){
+    const input=document.getElementById(inputId);
+    const name=input.value.trim();
+    if(!name){ showToast('Escribe un nombre'); return; }
+    if(list.some(i=>(i.name||i).toLowerCase()===name.toLowerCase())){ showToast('Ya existe'); return; }
+    setSyncDot('busy');
+    await sbPost(table, makeObj(name));
+    list.push(makeObj(name));
+    setSyncDot('ok');
+    input.value='';
+    refresh();
+    showToast(`"${name}" agregado`);
+  }
+
+  document.getElementById('addTechBtn').addEventListener('click',()=>
+    addItem('newTechInput', TECHS, 'technicians', n=>({name:n}), ()=>renderCatalogs()));
+  document.getElementById('addDeptBtn').addEventListener('click',()=>
+    addItem('newDeptInput', DEPTS, 'departments', n=>({name:n}), ()=>renderCatalogs()));
+  document.getElementById('addUserBtn').addEventListener('click', async ()=>{
+    const name=document.getElementById('newUserInput').value.trim();
+    const dept=document.getElementById('newUserDept').value;
+    if(!name){ showToast('Escribe el nombre del usuario'); return; }
+    if(!dept){ showToast('Selecciona un departamento'); return; }
+    if(REQUESTERS.some(r=>r.name.toLowerCase()===name.toLowerCase())){ showToast('Ya existe'); return; }
+    setSyncDot('busy');
+    await sbPost('requesters',{name,department:dept});
+    REQUESTERS.push({name,department:dept});
+    setSyncDot('ok');
+    document.getElementById('newUserInput').value='';
+    renderCatalogs();
+    showToast(`"${name}" agregado`);
+  });
+
+  [['newTechInput','addTechBtn'],['newDeptInput','addDeptBtn'],['newUserInput','addUserBtn']].forEach(([i,b])=>{
+    document.getElementById(i).addEventListener('keydown',e=>{ if(e.key==='Enter'){e.preventDefault();document.getElementById(b).click();} });
+  });
+}
+
+/* ---- Refresh ---- */
+function refreshAllViews(){
+  const active = document.querySelector('.tab-btn.active')?.dataset.view;
+  renderDashboard();
+  renderTicketsTable();
+  if(active==='metrics') renderMetrics();
+  if(active==='catalogs') renderCatalogs();
+}
+
+/* ---- Polling cada 30s para ver cambios de otros usuarios ---- */
+function startPolling(){
+  setInterval(async ()=>{
+    try{
+      const [t,tc,d,r] = await Promise.all([
+        sbGet('tickets'), sbGet('technicians'), sbGet('departments'), sbGet('requesters')
+      ]);
+      TICKETS=t; TECHS=tc; DEPTS=d; REQUESTERS=r;
+      setSyncDot('ok');
+      refreshAllViews();
+    }catch(e){ setSyncDot('err'); }
+  }, 30000);
+}
+
+/* ---- Init ---- */
+async function init(){
+  try{
+    await loadAll();
+  }catch(e){
+    setSyncDot('err');
+    document.querySelector('#loadingScreen .l2').textContent='Error al conectar con Supabase. Verifica la consola.';
+    console.error(e);
+    return;
+  }
+
+  tickClock(); setInterval(tickClock,1000);
+  setupTabs(); setupTicketTableEvents(); setupCatalogEvents();
+
+  document.getElementById('openNewTicketBtn').addEventListener('click', openNewTicketModal);
+  document.getElementById('quickNewTicket').addEventListener('click',()=>{ goToView('tickets'); setTimeout(openNewTicketModal,50); });
+  document.getElementById('ticketOverlay').addEventListener('click',e=>{ if(e.target.id==='ticketOverlay') closeModal(); });
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
+
+  refreshAllViews();
+  startPolling();
+
+  document.getElementById('loadingScreen').style.display='none';
+  document.getElementById('appShell').style.display='block';
+}
+
+init();
+})();
+</script>
+</body>
+</html>
