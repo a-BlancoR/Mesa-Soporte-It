@@ -599,7 +599,12 @@ function openTicketDetail(id){
       <div class="field"><label>Estado</label><select id="editStatus">${statusOpts}</select></div>
       <div class="field"><label>Colaborador asignado</label><select id="editTechnician"><option value="">Sin asignar</option>${techOpts}</select></div>
     </div>
-    <div class="small-note" id="resolveHint" style="display:none;">Se registrará la hora actual como hora de solución.</div>
+    <div id="resolveFields" style="display:none;margin-top:10px;">
+      <div class="field">
+        <label>Fecha y hora de resolución</label>
+        <input type="datetime-local" id="editResolvedAt">
+      </div>
+    </div>
     <hr class="divider">
     <div class="btn-row">
       <button class="btn" id="saveTicketEditBtn">Guardar cambios</button>
@@ -608,10 +613,21 @@ function openTicketDetail(id){
     </div>`;
 
   const statusSel=document.getElementById('editStatus');
-  const hint=document.getElementById('resolveHint');
-  statusSel.addEventListener('change',()=>{
-    hint.style.display=((statusSel.value==='Resuelto'||statusSel.value==='Cerrado')&&!t.resolved_at)?'block':'none';
-  });
+  const resolveFields=document.getElementById('resolveFields');
+  const editResolvedAt=document.getElementById('editResolvedAt');
+
+  function toggleResolveFields(){
+    const isResolved = statusSel.value==='Resuelto'||statusSel.value==='Cerrado';
+    resolveFields.style.display = isResolved ? 'block' : 'none';
+    if(isResolved && !editResolvedAt.value){
+      const d = t.resolved_at ? new Date(t.resolved_at) : new Date();
+      d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
+      editResolvedAt.value = d.toISOString().slice(0,16);
+    }
+    if(!isResolved) editResolvedAt.value='';
+  }
+  toggleResolveFields();
+  statusSel.addEventListener('change', toggleResolveFields);
 
   document.getElementById('closeModalBtn').addEventListener('click',closeModal);
   document.getElementById('closeModalBtn2').addEventListener('click',closeModal);
@@ -623,9 +639,10 @@ function openTicketDetail(id){
       status: newStatus,
       technician: document.getElementById('editTechnician').value||''
     };
-    if((newStatus==='Resuelto'||newStatus==='Cerrado')&&!t.resolved_at){
-      updates.resolved_at = new Date().toISOString();
-    } else if(newStatus!=='Resuelto'&&newStatus!=='Cerrado'){
+    if(newStatus==='Resuelto'||newStatus==='Cerrado'){
+      const rv = document.getElementById('editResolvedAt').value;
+      updates.resolved_at = rv ? new Date(rv).toISOString() : (t.resolved_at || new Date().toISOString());
+    } else {
       updates.resolved_at = null;
     }
     updates.log = [...(t.log||[]), {at:new Date().toISOString(),text:`Actualizado: ${newStatus}`}];
@@ -693,7 +710,8 @@ function renderCatalogs(){
 function renderTechList(){
   document.getElementById('techList').innerHTML=TECHS.map(({name})=>{
     const used=TICKETS.filter(t=>t.technician===name).length;
-    const btn=name==='Sin asignar'?'':` <button class="remove-btn" data-name="${escapeHtml(name)}">Quitar</button>`;
+    const protected_ = ['Sin asignar','sin asignar'].includes(name.toLowerCase().trim());
+    const btn=protected_?'':` <button class="remove-btn" data-name="${escapeHtml(name)}">Quitar</button>`;
     return `<li><span>${escapeHtml(name)} <span class="tag">(${used} ticket${used!==1?'s':''})</span></span>${btn}</li>`;
   }).join('');
   document.querySelectorAll('#techList .remove-btn').forEach(btn=>{
@@ -709,7 +727,8 @@ function renderTechList(){
 function renderDeptList(){
   document.getElementById('deptList').innerHTML=DEPTS.map(({name})=>{
     const used=TICKETS.filter(t=>t.department===name).length;
-    const btn=name==='Sin especificar'?'':` <button class="remove-btn" data-name="${escapeHtml(name)}">Quitar</button>`;
+    const protected2_ = ['Sin especificar','sin especificar'].includes(name.toLowerCase().trim());
+    const btn=protected2_?'':` <button class="remove-btn" data-name="${escapeHtml(name)}">Quitar</button>`;
     return `<li><span>${escapeHtml(name)} <span class="tag">(${used} ticket${used!==1?'s':''})</span></span>${btn}</li>`;
   }).join('');
   document.querySelectorAll('#deptList .remove-btn').forEach(btn=>{
