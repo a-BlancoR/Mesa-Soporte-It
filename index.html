@@ -386,6 +386,17 @@ function deptTreeOptionsHtml(){
   })(roots,0);
   return html;
 }
+// Igual que deptTreeOptionsHtml, pero si el ticket trae un departamento que ya
+// no existe en el catálogo (ej. se escribió a mano o se borró después), lo
+// agrega como opción extra para no perder el dato ni bloquear el guardado.
+function deptOptionsForTicket(current){
+  let html = deptTreeOptionsHtml();
+  const existsInCatalog = DEPTS.some(d=>d.name===current);
+  if(current && !existsInCatalog){
+    html += `<option value="${escapeHtml(current)}">${escapeHtml(current)} (fuera de catálogo)</option>`;
+  }
+  return html;
+}
 
 /* ---- Clock ---- */
 function tickClock(){
@@ -635,6 +646,7 @@ function openTicketDetail(id){
       <div class="m"><div class="l">Tiempo de respuesta</div>${resTime!==null?fmtHours(resTime):'—'}</div>
     </div>
     <div class="desc-box">${escapeHtml(t.description)}</div>
+    <div class="field"><label>Departamento</label><select id="editDepartment">${deptOptionsForTicket(t.department)}</select></div>
     <div class="grid3">
       <div class="field"><label>Prioridad</label><select id="editPriority">${priorityOpts}</select></div>
       <div class="field"><label>Estado</label><select id="editStatus">${statusOpts}</select></div>
@@ -667,6 +679,7 @@ function openTicketDetail(id){
     }
     if(!isResolved) editResolvedAt.value='';
   }
+  document.getElementById('editDepartment').value = t.department || '';
   toggleResolveFields();
   statusSel.addEventListener('change', toggleResolveFields);
 
@@ -676,6 +689,7 @@ function openTicketDetail(id){
   document.getElementById('saveTicketEditBtn').addEventListener('click', async ()=>{
     const newStatus=statusSel.value;
     const updates={
+      department: document.getElementById('editDepartment').value,
       priority: document.getElementById('editPriority').value,
       status: newStatus,
       technician: document.getElementById('editTechnician').value||''
