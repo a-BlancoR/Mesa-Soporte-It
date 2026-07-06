@@ -6,39 +6,40 @@
 <title>Mesa de Soporte IT</title>
 <style>
   :root{
-    --ink:#1c2128;--paper:#f7f5f1;--panel:#ffffff;--line:#dcd7cd;--line-strong:#b9b2a3;
-    --accent:#b5502f;--accent-soft:#f1e3da;--ok:#3f6b4a;--ok-soft:#e3ecdf;
-    --warn:#b8862c;--warn-soft:#f3e7cf;--crit:#9c2f2f;--crit-soft:#f3dcdc;
-    --mono:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;
-    --serif:"Source Serif 4","Georgia",serif;
-    --sans:"IBM Plex Sans","Segoe UI",sans-serif;
+    --ink:#1a1a1a;--paper:#f5f5f5;--panel:#ffffff;--line:#e0dada;--line-strong:#c9bcbc;
+    --accent:#7B1D42;--accent-soft:#f5e6ec;--ok:#2e6b3e;--ok-soft:#dff0e3;
+    --warn:#c47f00;--warn-soft:#fdf1d6;--crit:#9c2f2f;--crit-soft:#f8e0e0;
+    --gold:#E8A020;--gold-soft:#fdf0d6;
+    --mono:"Segoe UI Mono","Courier New",monospace;
+    --serif:"Georgia","Times New Roman",serif;
+    --sans:"Segoe UI","Helvetica Neue",Arial,sans-serif;
   }
   *{box-sizing:border-box;}
   body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.45;}
   .shell{max-width:1280px;margin:0 auto;padding:0 28px 80px;}
-  header.top{border-bottom:2px solid var(--ink);padding:28px 28px 18px;margin-bottom:0;display:flex;align-items:baseline;justify-content:space-between;gap:20px;flex-wrap:wrap;}
-  .brand{display:flex;align-items:baseline;gap:14px;}
-  .brand .mark{font-family:var(--mono);font-size:12px;letter-spacing:.12em;color:var(--accent);border:1px solid var(--accent);padding:3px 7px;border-radius:3px;text-transform:uppercase;}
-  .brand h1{font-family:var(--serif);font-weight:600;font-size:26px;margin:0;letter-spacing:-0.01em;}
-  .brand .sub{font-family:var(--mono);font-size:11.5px;color:#6b6358;letter-spacing:.04em;}
-  .clock{font-family:var(--mono);font-size:12px;color:#6b6358;text-align:right;}
-  .clock strong{color:var(--ink);display:block;font-size:14px;}
-  nav.tabs{display:flex;gap:2px;padding:0 28px;background:var(--paper);border-bottom:1px solid var(--line-strong);}
-  nav.tabs button{font-family:var(--mono);font-size:12.5px;letter-spacing:.03em;text-transform:uppercase;background:none;border:none;cursor:pointer;padding:13px 18px;color:#6b6358;position:relative;top:1px;}
-  nav.tabs button.active{color:var(--ink);border-bottom:2px solid var(--accent);font-weight:600;}
-  nav.tabs button:hover{color:var(--ink);}
+  header.top{background:var(--accent);padding:18px 28px;margin-bottom:0;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;}
+  .brand{display:flex;align-items:center;gap:14px;}
+  .brand .mark{font-family:var(--sans);font-size:11px;letter-spacing:.08em;color:#fff;border:1px solid var(--gold);padding:3px 8px;border-radius:3px;text-transform:uppercase;background:transparent;}
+  .brand h1{font-family:var(--sans);font-weight:700;font-size:22px;margin:0;color:#fff;letter-spacing:0;}
+  .brand .sub{font-family:var(--sans);font-size:11px;color:rgba(255,255,255,.75);letter-spacing:.02em;}
+  .clock{font-family:var(--sans);font-size:12px;color:rgba(255,255,255,.8);text-align:right;}
+  .clock strong{color:#fff;display:block;font-size:13px;}
+  nav.tabs{display:flex;gap:2px;padding:0 28px;background:#fff;border-bottom:3px solid var(--accent);}
+  nav.tabs button{font-family:var(--sans);font-size:12.5px;letter-spacing:.02em;text-transform:uppercase;background:none;border:none;cursor:pointer;padding:13px 18px;color:#666;position:relative;top:1px;font-weight:500;}
+  nav.tabs button.active{color:var(--accent);border-bottom:3px solid var(--gold);font-weight:700;}
+  nav.tabs button:hover{color:var(--accent);}
   main{padding-top:26px;}
   .view{display:none;}
   .view.active{display:block;}
   h2.section-title{font-family:var(--serif);font-size:19px;font-weight:600;margin:0 0 16px;display:flex;align-items:center;gap:10px;}
-  h2.section-title .eyebrow{font-family:var(--mono);font-size:11px;color:var(--accent);border-left:2px solid var(--accent);padding-left:8px;letter-spacing:.05em;}
+  h2.section-title .eyebrow{font-family:var(--sans);font-size:11px;color:var(--accent);border-left:3px solid var(--gold);padding-left:8px;letter-spacing:.04em;font-weight:600;text-transform:uppercase;}
   button{font-family:var(--sans);cursor:pointer;}
-  .btn{font-family:var(--mono);font-size:12px;letter-spacing:.03em;border:1px solid var(--ink);background:var(--ink);color:var(--paper);padding:9px 16px;border-radius:3px;transition:transform .08s ease;}
-  .btn:hover{background:#000;}
+  .btn{font-family:var(--sans);font-size:12.5px;font-weight:600;letter-spacing:.02em;border:none;background:var(--accent);color:#fff;padding:9px 18px;border-radius:4px;transition:background .15s ease,transform .08s ease;}
+  .btn:hover{background:#5e1532;}
   .btn:active{transform:translateY(1px);}
-  .btn.secondary{background:transparent;color:var(--ink);border-color:var(--line-strong);}
-  .btn.secondary:hover{background:#fff;border-color:var(--ink);}
-  .btn.danger{background:var(--crit);border-color:var(--crit);}
+  .btn.secondary{background:transparent;color:var(--accent);border:1.5px solid var(--accent);}
+  .btn.secondary:hover{background:var(--accent-soft);}
+  .btn.danger{background:var(--crit);border:none;}
   .btn:disabled{opacity:.45;cursor:not-allowed;}
   .btn-row{display:flex;gap:10px;flex-wrap:wrap;}
   input,select,textarea{font-family:var(--sans);font-size:13.5px;color:var(--ink);background:#fff;border:1px solid var(--line-strong);border-radius:3px;padding:9px 10px;width:100%;}
@@ -52,7 +53,7 @@
   .kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:26px;}
   @media(max-width:900px){.kpi-row{grid-template-columns:repeat(2,1fr);}}
   .kpi{background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:16px 18px;position:relative;overflow:hidden;}
-  .kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--line-strong);}
+  .kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--gold);}
   .kpi.crit::before{background:var(--crit);}
   .kpi.warn::before{background:var(--warn);}
   .kpi.ok::before{background:var(--ok);}
@@ -107,7 +108,7 @@
   .tech-card .stat .v{font-family:var(--mono);font-size:18px;font-weight:600;}
   .tech-card .stat .l{font-family:var(--mono);font-size:9.5px;text-transform:uppercase;color:#6b6358;letter-spacing:.03em;}
   .bar-track{height:6px;background:#ece8e0;border-radius:3px;margin-top:10px;overflow:hidden;}
-  .bar-fill{height:100%;background:var(--accent);border-radius:3px;}
+  .bar-fill{height:100%;background:var(--gold);border-radius:3px;}
   .toast{position:fixed;bottom:24px;right:24px;background:var(--ink);color:var(--paper);padding:12px 18px;border-radius:4px;font-family:var(--mono);font-size:12.5px;opacity:0;transform:translateY(8px);transition:all .25s ease;z-index:100;}
   .toast.show{opacity:1;transform:translateY(0);}
   .small-note{font-family:var(--mono);font-size:11px;color:#6b6358;margin-top:6px;}
@@ -123,9 +124,9 @@
   /* ---- Pantalla usuario ---- */
   #userScreen{position:fixed;inset:0;background:var(--paper);display:flex;align-items:center;justify-content:center;padding:24px;z-index:150;overflow-y:auto;}
   .user-card{background:var(--panel);border:1px solid var(--line);border-radius:8px;max-width:520px;width:100%;padding:36px 32px 28px;box-shadow:0 8px 40px rgba(0,0,0,.1);}
-  .user-card .uc-mark{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--accent);border:1px solid var(--accent);padding:3px 7px;border-radius:3px;text-transform:uppercase;display:inline-block;margin-bottom:14px;}
-  .user-card h2{font-family:var(--serif);font-size:22px;font-weight:600;margin:0 0 4px;}
-  .user-card .uc-sub{font-family:var(--mono);font-size:11px;color:#6b6358;margin-bottom:24px;}
+  .user-card .uc-mark{font-family:var(--sans);font-size:11px;letter-spacing:.08em;color:#fff;background:var(--accent);border:none;padding:4px 10px;border-radius:3px;text-transform:uppercase;display:inline-block;margin-bottom:14px;font-weight:600;}
+  .user-card h2{font-family:var(--sans);font-size:24px;font-weight:700;margin:0 0 4px;color:var(--accent);}
+  .user-card .uc-sub{font-family:var(--sans);font-size:12px;color:#666;margin-bottom:24px;}
   .success-msg{text-align:center;padding:20px 0;}
   .success-msg .s-icon{font-size:48px;margin-bottom:12px;}
   .success-msg h3{font-family:var(--serif);font-size:20px;margin:0 0 6px;}
@@ -178,7 +179,7 @@
     </div>
 
     <div class="field">
-      <label>Selecciona al personal de Informática (OPCIONAL)</label>
+      <label>¿A quién deseas que te atienda? (opcional)</label>
       <select id="ucTechSelect">
         <option value="">Sin preferencia</option>
       </select>
