@@ -15,7 +15,6 @@
   }
   *{box-sizing:border-box;}
   body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.45;}
-  ::selection{background:var(--accent-soft);}
   .shell{max-width:1280px;margin:0 auto;padding:0 28px 80px;}
   header.top{border-bottom:2px solid var(--ink);padding:28px 28px 18px;margin-bottom:0;display:flex;align-items:baseline;justify-content:space-between;gap:20px;flex-wrap:wrap;}
   .brand{display:flex;align-items:baseline;gap:14px;}
@@ -120,128 +119,205 @@
   .sync-dot.err{background:var(--crit);}
   .sync-dot.busy{background:var(--warn);animation:pulse .7s infinite alternate;}
   @keyframes pulse{to{opacity:.3;}}
+
+  /* ---- Pantalla usuario ---- */
+  #userScreen{position:fixed;inset:0;background:var(--paper);display:flex;align-items:center;justify-content:center;padding:24px;z-index:150;overflow-y:auto;}
+  .user-card{background:var(--panel);border:1px solid var(--line);border-radius:8px;max-width:520px;width:100%;padding:36px 32px 28px;box-shadow:0 8px 40px rgba(0,0,0,.1);}
+  .user-card .uc-mark{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--accent);border:1px solid var(--accent);padding:3px 7px;border-radius:3px;text-transform:uppercase;display:inline-block;margin-bottom:14px;}
+  .user-card h2{font-family:var(--serif);font-size:22px;font-weight:600;margin:0 0 4px;}
+  .user-card .uc-sub{font-family:var(--mono);font-size:11px;color:#6b6358;margin-bottom:24px;}
+  .success-msg{text-align:center;padding:20px 0;}
+  .success-msg .s-icon{font-size:48px;margin-bottom:12px;}
+  .success-msg h3{font-family:var(--serif);font-size:20px;margin:0 0 6px;}
+  .success-msg p{font-family:var(--mono);font-size:12px;color:#6b6358;margin:0 0 20px;}
+  .admin-link{position:fixed;bottom:16px;right:20px;font-family:var(--mono);font-size:11px;color:#b9b2a3;background:none;border:none;cursor:pointer;text-decoration:underline;}
+  .admin-link:hover{color:var(--ink);}
 </style>
 </head>
 <body>
 
 <div class="loading-screen" id="loadingScreen">
   <div class="l1">Mesa de Soporte IT</div>
-  <div class="l2">Conectando con la base de datos&hellip;</div>
+  <div class="l2">Conectando&hellip;</div>
 </div>
 
-<div class="shell" id="appShell" style="display:none;">
-  <header class="top">
-    <div class="brand">
-      <span class="mark">IT&middot;01</span>
-      <div>
-        <h1>Mesa de Soporte <span class="sync-dot" id="syncDot" title="Estado de conexión"></span></h1>
-        <div class="sub">Bitácora de tickets &amp; productividad técnica</div>
+<!-- PANTALLA USUARIO -->
+<div id="userScreen" style="display:none;">
+  <div class="user-card" id="userCard">
+    <span class="uc-mark">Soporte IT</span>
+    <h2>Reportar un problema</h2>
+    <div class="uc-sub">Completa el formulario y el equipo de informática atenderá tu solicitud.</div>
+
+    <div class="field">
+      <label>Tu nombre</label>
+      <select id="ucUserSelect">
+        <option value="">— Selecciona tu nombre —</option>
+        <option value="__new__">+ Mi nombre no está en la lista</option>
+      </select>
+      <div id="ucNewNameWrap" style="display:none;margin-top:8px;">
+        <input type="text" id="ucNewName" placeholder="Escribe tu nombre completo">
       </div>
     </div>
-    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
-      <div class="clock">
-        <strong id="clockDate">&nbsp;</strong>
-        <span id="clockTime">&nbsp;</span>
-      </div>
-      <button class="btn secondary" id="notifBtn" style="font-size:11px;padding:5px 12px;">🔔 Activar notificaciones</button>
+
+    <div class="field" id="ucDeptField" style="display:none;">
+      <label>Departamento</label>
+      <select id="ucDeptSelect">
+        <option value="">— Selecciona tu departamento —</option>
+      </select>
     </div>
-  </header>
 
-  <nav class="tabs">
-    <button class="tab-btn active" data-view="dashboard">Tablero</button>
-    <button class="tab-btn" data-view="tickets">Tickets</button>
-    <button class="tab-btn" data-view="metrics">Productividad</button>
-    <button class="tab-btn" data-view="catalogs">Catálogos</button>
-  </nav>
+    <div class="field" id="ucDeptDisplay" style="display:none;">
+      <label>Departamento</label>
+      <input type="text" id="ucDeptText" disabled>
+    </div>
 
-  <main>
-    <!-- DASHBOARD -->
-    <section class="view active" id="view-dashboard">
-      <h2 class="section-title"><span class="eyebrow">Resumen</span> Estado general</h2>
-      <div class="kpi-row" id="kpiRow"></div>
-      <div class="col3">
-        <div class="panel" style="grid-column:span 2;">
-          <h2 class="section-title" style="font-size:15px;">Tickets abiertos &amp; en proceso</h2>
-          <table><thead><tr><th>Folio</th><th>Solicitante</th><th>Prioridad</th><th>Estado</th><th>Colaborador</th></tr></thead>
-          <tbody id="dashOpenTable"></tbody></table>
-        </div>
-        <div class="panel">
-          <h2 class="section-title" style="font-size:15px;">Acción rápida</h2>
-          <p style="font-size:13px;color:#54524a;margin-top:0;">Registra una solicitud apenas llegue al correo de soporte, así no se te acumulan ni se pierden.</p>
-          <button class="btn" style="width:100%;" id="quickNewTicket">+ Nuevo ticket</button>
+    <div class="field">
+      <label>Describe el problema</label>
+      <textarea id="ucDescription" rows="4" placeholder="Explica lo que está pasando con detalle…"></textarea>
+    </div>
+
+    <div class="field">
+      <label>¿A quién deseas que te atienda? (opcional)</label>
+      <select id="ucTechSelect">
+        <option value="">Sin preferencia</option>
+      </select>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" id="ucSubmitBtn" style="width:100%;">Enviar solicitud</button>
+    </div>
+  </div>
+  <button class="admin-link" id="adminLinkBtn">Administrador</button>
+</div>
+
+<!-- LOGIN ADMIN -->
+<div class="overlay" id="loginOverlay">
+  <div class="modal" style="max-width:360px;">
+    <button class="modal-close" id="loginCloseBtn">&times;</button>
+    <h3>Acceso administrador</h3>
+    <div class="modal-sub">Solo Personal de Informática</div>
+    <div class="field"><label>Usuario</label><input type="text" id="loginUser" autocomplete="username"></div>
+    <div class="field"><label>Contraseña</label><input type="password" id="loginPass" autocomplete="current-password"></div>
+    <div style="color:var(--crit);font-family:var(--mono);font-size:11px;min-height:16px;margin-bottom:12px;" id="loginError"></div>
+    <button class="btn" id="loginSubmitBtn" style="width:100%;">Entrar</button>
+  </div>
+</div>
+
+<!-- APP ADMIN -->
+<div id="appShell" style="display:none;">
+  <div class="shell">
+    <header class="top">
+      <div class="brand">
+        <span class="mark">IT&middot;01</span>
+        <div>
+          <h1>Mesa de Soporte <span class="sync-dot" id="syncDot"></span></h1>
+          <div class="sub">Bitácora de tickets &amp; productividad técnica</div>
         </div>
       </div>
-    </section>
-
-    <!-- TICKETS -->
-    <section class="view" id="view-tickets">
-      <h2 class="section-title"><span class="eyebrow">Bitácora</span> Todos los tickets</h2>
-      <div class="toolbar">
-        <div class="field grow"><label>Buscar</label><input type="text" id="searchInput" placeholder="Folio, solicitante, descripción..."></div>
-        <div class="field"><label>Estado</label>
-          <select id="filterStatus"><option value="">Todos</option><option>Abierto</option><option>En proceso</option><option>Resuelto</option><option>Cerrado</option></select>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+        <div class="clock">
+          <strong id="clockDate">&nbsp;</strong>
+          <span id="clockTime">&nbsp;</span>
         </div>
-        <div class="field"><label>Prioridad</label>
-          <select id="filterPriority"><option value="">Todas</option><option>Baja</option><option>Media</option><option>Alta</option><option>Crítica</option></select>
+        <div style="display:flex;gap:8px;">
+          <button class="btn secondary" id="notifBtn" style="font-size:11px;padding:5px 12px;">🔔 Activar notificaciones</button>
+          <button class="btn secondary" id="logoutBtn" style="font-size:11px;padding:5px 12px;">Cerrar sesión</button>
         </div>
-        <div class="field"><label>Personal de Informática</label>
-          <select id="filterTech"><option value="">Todos</option></select>
-        </div>
-        <button class="btn secondary" id="reportBtn" disabled>&#128438; Reporte</button>
-        <button class="btn" id="openNewTicketBtn">+ Nuevo ticket</button>
       </div>
-      <div class="panel" style="padding:0;overflow-x:auto;">
-        <table>
-          <thead><tr>
-            <th data-sort="id">Folio</th><th data-sort="requester">Solicitante</th>
-            <th data-sort="department">Depto.</th><th data-sort="priority">Prioridad</th>
-            <th data-sort="status">Estado</th><th data-sort="technician">Colaborador</th>
-            <th data-sort="created_at">Solicitado</th><th data-sort="resolved_at">Resuelto</th>
-          </tr></thead>
-          <tbody id="ticketsTableBody"></tbody>
-        </table>
-      </div>
-    </section>
+    </header>
 
-    <!-- METRICS -->
-    <section class="view" id="view-metrics">
-      <h2 class="section-title"><span class="eyebrow">Desempeño</span> Productividad por colaborador</h2>
-      <div id="metricsContainer"></div>
-    </section>
+    <nav class="tabs">
+      <button class="tab-btn active" data-view="dashboard">Tablero</button>
+      <button class="tab-btn" data-view="tickets">Tickets</button>
+      <button class="tab-btn" data-view="metrics">Productividad</button>
+      <button class="tab-btn" data-view="catalogs">Catálogos</button>
+    </nav>
 
-    <!-- CATALOGS -->
-    <section class="view" id="view-catalogs">
-      <h2 class="section-title"><span class="eyebrow">Administración</span> Catálogos maestros</h2>
-      <p style="font-size:12.5px;color:#6b6358;margin-top:-8px;">Agrega aquí los nombres una sola vez para mantener las métricas confiables.</p>
-      <div class="col3">
-        <div class="panel">
-          <h2 class="section-title" style="font-size:14px;">Personal de Informática</h2>
-          <ul class="cat-list" id="techList"></ul>
-          <div class="add-inline">
-            <input type="text" id="newTechInput" placeholder="Nombre del colaborador">
-            <button class="btn secondary" id="addTechBtn">Agregar</button>
+    <main>
+      <section class="view active" id="view-dashboard">
+        <h2 class="section-title"><span class="eyebrow">Resumen</span> Estado general</h2>
+        <div class="kpi-row" id="kpiRow"></div>
+        <div class="col3">
+          <div class="panel" style="grid-column:span 2;">
+            <h2 class="section-title" style="font-size:15px;">Tickets abiertos &amp; en proceso</h2>
+            <table><thead><tr><th>Folio</th><th>Solicitante</th><th>Prioridad</th><th>Estado</th><th>Colaborador</th></tr></thead>
+            <tbody id="dashOpenTable"></tbody></table>
+          </div>
+          <div class="panel">
+            <h2 class="section-title" style="font-size:15px;">Acción rápida</h2>
+            <p style="font-size:13px;color:#54524a;margin-top:0;">Registra una solicitud directamente desde aquí.</p>
+            <button class="btn" style="width:100%;" id="quickNewTicket">+ Nuevo ticket</button>
           </div>
         </div>
-        <div class="panel">
-          <h2 class="section-title" style="font-size:14px;">Departamentos</h2>
-          <ul class="cat-list" id="deptList"></ul>
-          <div class="add-inline">
-            <input type="text" id="newDeptInput" placeholder="Nombre del departamento">
-            <button class="btn secondary" id="addDeptBtn">Agregar</button>
+      </section>
+
+      <section class="view" id="view-tickets">
+        <h2 class="section-title"><span class="eyebrow">Bitácora</span> Todos los tickets</h2>
+        <div class="toolbar">
+          <div class="field grow"><label>Buscar</label><input type="text" id="searchInput" placeholder="Folio, solicitante, descripción..."></div>
+          <div class="field"><label>Estado</label>
+            <select id="filterStatus"><option value="">Todos</option><option>Abierto</option><option>En proceso</option><option>Resuelto</option><option>Cerrado</option></select>
+          </div>
+          <div class="field"><label>Prioridad</label>
+            <select id="filterPriority"><option value="">Todas</option><option>Baja</option><option>Media</option><option>Alta</option><option>Crítica</option></select>
+          </div>
+          <div class="field"><label>Personal de Informática</label>
+            <select id="filterTech"><option value="">Todos</option></select>
+          </div>
+          <button class="btn secondary" id="reportBtn" disabled>&#128438; Reporte</button>
+          <button class="btn" id="openNewTicketBtn">+ Nuevo ticket</button>
+        </div>
+        <div class="panel" style="padding:0;overflow-x:auto;">
+          <table>
+            <thead><tr>
+              <th data-sort="id">Folio</th><th data-sort="requester">Solicitante</th>
+              <th data-sort="department">Depto.</th><th data-sort="priority">Prioridad</th>
+              <th data-sort="status">Estado</th><th data-sort="technician">Colaborador</th>
+              <th data-sort="created_at">Solicitado</th><th data-sort="resolved_at">Resuelto</th>
+            </tr></thead>
+            <tbody id="ticketsTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="view" id="view-metrics">
+        <h2 class="section-title"><span class="eyebrow">Desempeño</span> Productividad por colaborador</h2>
+        <div id="metricsContainer"></div>
+      </section>
+
+      <section class="view" id="view-catalogs">
+        <h2 class="section-title"><span class="eyebrow">Administración</span> Catálogos maestros</h2>
+        <p style="font-size:12.5px;color:#6b6358;margin-top:-8px;">Agrega aquí los nombres una sola vez para mantener las métricas confiables.</p>
+        <div class="col3">
+          <div class="panel">
+            <h2 class="section-title" style="font-size:14px;">Personal de Informática</h2>
+            <ul class="cat-list" id="techList"></ul>
+            <div class="add-inline">
+              <input type="text" id="newTechInput" placeholder="Nombre del colaborador">
+              <button class="btn secondary" id="addTechBtn">Agregar</button>
+            </div>
+          </div>
+          <div class="panel">
+            <h2 class="section-title" style="font-size:14px;">Departamentos</h2>
+            <ul class="cat-list" id="deptList"></ul>
+            <div class="add-inline">
+              <input type="text" id="newDeptInput" placeholder="Nombre del departamento">
+              <button class="btn secondary" id="addDeptBtn">Agregar</button>
+            </div>
+          </div>
+          <div class="panel">
+            <h2 class="section-title" style="font-size:14px;">Usuarios solicitantes</h2>
+            <ul class="cat-list" id="userList"></ul>
+            <div class="add-inline" style="flex-direction:column;gap:8px;">
+              <input type="text" id="newUserInput" placeholder="Nombre del usuario">
+              <select id="newUserDept"><option value="">Departamento</option></select>
+              <button class="btn secondary" id="addUserBtn" style="width:100%;">Agregar usuario</button>
+            </div>
           </div>
         </div>
-        <div class="panel">
-          <h2 class="section-title" style="font-size:14px;">Usuarios solicitantes</h2>
-          <ul class="cat-list" id="userList"></ul>
-          <div class="add-inline" style="flex-direction:column;gap:8px;">
-            <input type="text" id="newUserInput" placeholder="Nombre del usuario">
-            <select id="newUserDept"><option value="">Departamento</option></select>
-            <button class="btn secondary" id="addUserBtn" style="width:100%;">Agregar usuario</button>
-          </div>
-        </div>
-      </div>
-    </section>
-  </main>
+      </section>
+    </main>
+  </div>
 </div>
 
 <div class="overlay" id="ticketOverlay"><div class="modal" id="ticketModal"></div></div>
@@ -252,85 +328,67 @@
 
 const SB_URL = 'https://yvkycguwkchikrgbxyxa.supabase.co';
 const SB_KEY = 'sb_publishable_ewrWWuX-JGoMlTlxbVXr5A_oeRllP1j';
+const ADMIN_USER = 'Administrador';
+const ADMIN_PASS = 'S0p0rt3';
 
-const hdr = { 'Content-Type':'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY };
+const hdr = {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
 
 function buildQuery(params){
   if(!params) return '';
-  const parts = Object.entries(params).map(([k,v])=> `${encodeURIComponent(k)}=${encodeURIComponent(v)}`);
-  return parts.length ? '?' + parts.join('&') : '';
+  const parts=Object.entries(params).map(([k,v])=>`${encodeURIComponent(k)}=${encodeURIComponent(v)}`);
+  return parts.length?'?'+parts.join('&'):'';
 }
-
-async function sbGet(table, params){
-  const order = table === 'tickets' ? 'created_at.desc' : 'name.asc';
-  const qs = buildQuery({ ...params, order });
-  const r = await fetch(`${SB_URL}/rest/v1/${table}${qs}`, { headers: { ...hdr, 'Prefer':'return=representation' } });
+async function sbGet(table,params){
+  const order=table==='tickets'?'created_at.desc':'name.asc';
+  const qs=buildQuery({...params,order});
+  const r=await fetch(`${SB_URL}/rest/v1/${table}${qs}`,{headers:{...hdr,'Prefer':'return=representation'}});
   if(!r.ok) throw new Error(await r.text());
   return r.json();
 }
-
-async function sbPost(table, body){
-  const r = await fetch(`${SB_URL}/rest/v1/${table}`, {
-    method:'POST', headers:{ ...hdr,'Prefer':'return=representation' }, body: JSON.stringify(body)
-  });
+async function sbPost(table,body){
+  const r=await fetch(`${SB_URL}/rest/v1/${table}`,{method:'POST',headers:{...hdr,'Prefer':'return=representation'},body:JSON.stringify(body)});
   if(!r.ok) throw new Error(await r.text());
   return r.json();
 }
-
-async function sbPatch(table, match, body){
-  const qs = buildQuery(Object.fromEntries(Object.entries(match).map(([k,v])=>[k,`eq.${v}`])));
-  const r = await fetch(`${SB_URL}/rest/v1/${table}${qs}`, {
-    method:'PATCH', headers:{ ...hdr,'Prefer':'return=representation' }, body: JSON.stringify(body)
-  });
+async function sbPatch(table,match,body){
+  const qs=buildQuery(Object.fromEntries(Object.entries(match).map(([k,v])=>[k,`eq.${v}`])));
+  const r=await fetch(`${SB_URL}/rest/v1/${table}${qs}`,{method:'PATCH',headers:{...hdr,'Prefer':'return=representation'},body:JSON.stringify(body)});
   if(!r.ok) throw new Error(await r.text());
   return r.json();
 }
-
-async function sbDelete(table, match){
-  const qs = buildQuery(Object.fromEntries(Object.entries(match).map(([k,v])=>[k,`eq.${v}`])));
-  const r = await fetch(`${SB_URL}/rest/v1/${table}${qs}`, { method:'DELETE', headers: hdr });
+async function sbDelete(table,match){
+  const qs=buildQuery(Object.fromEntries(Object.entries(match).map(([k,v])=>[k,`eq.${v}`])));
+  const r=await fetch(`${SB_URL}/rest/v1/${table}${qs}`,{method:'DELETE',headers:hdr});
   if(!r.ok) throw new Error(await r.text());
 }
-
 async function nextId(){
-  const r = await fetch(`${SB_URL}/rest/v1/rpc/nextval`, {
-    method:'POST', headers: hdr, body: JSON.stringify({ sequence_name:'ticket_seq' })
-  });
-  if(!r.ok){
-    // fallback: timestamp-based
-    return `TK-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
-  }
-  const n = await r.json();
+  const r=await fetch(`${SB_URL}/rest/v1/rpc/nextval`,{method:'POST',headers:hdr,body:JSON.stringify({sequence_name:'ticket_seq'})});
+  if(!r.ok) return `TK-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
+  const n=await r.json();
   return `TK-${new Date().getFullYear()}-${String(n).padStart(4,'0')}`;
 }
 
-/* ---- Estado en memoria (caché) ---- */
-let TICKETS=[], TECHS=[], DEPTS=[], REQUESTERS=[];
+let TICKETS=[],TECHS=[],DEPTS=[],REQUESTERS=[];
+let isAdmin=false;
 
-function setSyncDot(state){ // 'ok' | 'err' | 'busy'
-  const d = document.getElementById('syncDot');
-  d.className = 'sync-dot ' + state;
-  d.title = state==='ok'?'Conectado':state==='err'?'Error de conexión':'Guardando…';
+function setSyncDot(state){
+  const d=document.getElementById('syncDot');
+  if(!d) return;
+  d.className='sync-dot '+state;
 }
-
 async function loadAll(){
-  setSyncDot('busy');
-  [TICKETS, TECHS, DEPTS, REQUESTERS] = await Promise.all([
-    sbGet('tickets'), sbGet('technicians'), sbGet('departments'), sbGet('requesters')
-  ]);
-  setSyncDot('ok');
+  [TICKETS,TECHS,DEPTS,REQUESTERS]=await Promise.all([sbGet('tickets'),sbGet('technicians'),sbGet('departments'),sbGet('requesters')]);
 }
 
-/* ---- Utilidades ---- */
 function fmtDateTime(iso){
   if(!iso) return '—';
-  const d = new Date(iso);
+  const d=new Date(iso);
   if(isNaN(d)) return '—';
   return d.toLocaleString('es-MX',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
 }
 function hoursBetween(a,b){
   if(!a||!b) return null;
-  const ms = new Date(b)-new Date(a);
+  const ms=new Date(b)-new Date(a);
   return isNaN(ms)||ms<0?null:ms/36e5;
 }
 function fmtHours(h){
@@ -339,24 +397,153 @@ function fmtHours(h){
   if(h<48) return h.toFixed(1)+' h';
   return (h/24).toFixed(1)+' días';
 }
-function slugify(s){ return (s||'').toLowerCase().trim().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,''); }
-function escapeHtml(s){ return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2400); }
-function priorityWeight(p){ return{Crítica:4,Alta:3,Media:2,Baja:1}[p]||0; }
+function slugify(s){return(s||'').toLowerCase().trim().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');}
+function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2400);}
+function priorityWeight(p){return{Crítica:4,Alta:3,Media:2,Baja:1}[p]||0;}
+function nowLocalInputValue(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16);}
+function isProtectedName(name){return['sin asignar','sin especificar'].includes((name||'').toLowerCase().trim());}
 
-function nowLocalInputValue(){
-  const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
-  return d.toISOString().slice(0,16);
+/* ---- PANTALLA USUARIO ---- */
+function showUserScreen(){
+  isAdmin=false;
+  document.getElementById('userScreen').style.display='flex';
+  document.getElementById('appShell').style.display='none';
+  populateUserScreen();
 }
 
-/* ---- Clock ---- */
+function populateUserScreen(){
+  const sel=document.getElementById('ucUserSelect');
+  sel.innerHTML='<option value="">— Selecciona tu nombre —</option>'+
+    REQUESTERS.map(r=>`<option value="${escapeHtml(r.name)}" data-dept="${escapeHtml(r.department)}">${escapeHtml(r.name)}</option>`).join('')+
+    '<option value="__new__">+ Mi nombre no está en la lista</option>';
+
+  const techSel=document.getElementById('ucTechSelect');
+  techSel.innerHTML='<option value="">Sin preferencia</option>'+
+    TECHS.filter(t=>!isProtectedName(t.name)).map(t=>`<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`).join('');
+
+  const deptSel=document.getElementById('ucDeptSelect');
+  deptSel.innerHTML='<option value="">— Selecciona tu departamento —</option>'+
+    DEPTS.filter(d=>!isProtectedName(d.name)).map(d=>`<option>${escapeHtml(d.name)}</option>`).join('');
+
+  sel.onchange=()=>{
+    const v=sel.value;
+    const newWrap=document.getElementById('ucNewNameWrap');
+    const deptField=document.getElementById('ucDeptField');
+    const deptDisplay=document.getElementById('ucDeptDisplay');
+    newWrap.style.display=v==='__new__'?'block':'none';
+    if(v&&v!=='__new__'){
+      const dept=sel.selectedOptions[0].dataset.dept||'';
+      document.getElementById('ucDeptText').value=dept;
+      deptDisplay.style.display='block';
+      deptField.style.display='none';
+    } else if(v==='__new__'){
+      deptField.style.display='block';
+      deptDisplay.style.display='none';
+    } else {
+      deptField.style.display='none';
+      deptDisplay.style.display='none';
+    }
+  };
+}
+
+async function submitUserTicket(){
+  const sel=document.getElementById('ucUserSelect');
+  let requester='',department='';
+  if(sel.value==='__new__'){
+    requester=document.getElementById('ucNewName').value.trim();
+    department=document.getElementById('ucDeptSelect').value;
+    if(!requester){showToast('Escribe tu nombre completo');return;}
+    if(!department){showToast('Selecciona tu departamento');return;}
+    if(!REQUESTERS.some(r=>r.name.toLowerCase()===requester.toLowerCase())){
+      await sbPost('requesters',{name:requester,department});
+      REQUESTERS.push({name:requester,department});
+    }
+  } else if(!sel.value){showToast('Selecciona tu nombre');return;}
+  else{requester=sel.value;department=sel.selectedOptions[0].dataset.dept||'';}
+
+  const description=document.getElementById('ucDescription').value.trim();
+  if(!description){showToast('Describe el problema');return;}
+
+  const btn=document.getElementById('ucSubmitBtn');
+  btn.disabled=true; btn.textContent='Enviando…';
+
+  const id=await nextId();
+  const tech=document.getElementById('ucTechSelect').value||'';
+  const ticket={
+    id,requester,department,description,
+    priority:'Media',status:'Abierto',technician:tech,
+    created_at:new Date().toISOString(),resolved_at:null,
+    log:[{at:new Date().toISOString(),text:'Ticket creado por usuario'}]
+  };
+  await sbPost('tickets',ticket);
+  TICKETS.unshift(ticket);
+
+  document.getElementById('userCard').innerHTML=`
+    <div class="success-msg">
+      <div class="s-icon">✅</div>
+      <h3>¡Solicitud enviada!</h3>
+      <p>Tu folio es <strong>${id}</strong>.<br>El equipo de informática atenderá tu solicitud a la brevedad.</p>
+      <button class="btn" id="ucNewTicketBtn" style="margin:0 auto;">Reportar otro problema</button>
+    </div>`;
+  document.getElementById('ucNewTicketBtn').addEventListener('click',()=>{
+    document.getElementById('userCard').innerHTML=`
+      <span class="uc-mark">Soporte IT</span>
+      <h2>Reportar un problema</h2>
+      <div class="uc-sub">Completa el formulario y el equipo de informática atenderá tu solicitud.</div>
+      <div class="field"><label>Tu nombre</label>
+        <select id="ucUserSelect"><option value="">— Selecciona tu nombre —</option><option value="__new__">+ Mi nombre no está en la lista</option></select>
+        <div id="ucNewNameWrap" style="display:none;margin-top:8px;"><input type="text" id="ucNewName" placeholder="Escribe tu nombre completo"></div>
+      </div>
+      <div class="field" id="ucDeptField" style="display:none;"><label>Departamento</label>
+        <select id="ucDeptSelect"><option value="">— Selecciona tu departamento —</option></select>
+      </div>
+      <div class="field" id="ucDeptDisplay" style="display:none;"><label>Departamento</label><input type="text" id="ucDeptText" disabled></div>
+      <div class="field"><label>Describe el problema</label><textarea id="ucDescription" rows="4" placeholder="Explica lo que está pasando con detalle…"></textarea></div>
+      <div class="field"><label>¿A quién deseas que te atienda? (opcional)</label><select id="ucTechSelect"><option value="">Sin preferencia</option></select></div>
+      <div class="btn-row"><button class="btn" id="ucSubmitBtn" style="width:100%;">Enviar solicitud</button></div>`;
+    populateUserScreen();
+    document.getElementById('ucSubmitBtn').addEventListener('click',submitUserTicket);
+  });
+}
+
+/* ---- LOGIN ADMIN ---- */
+function showLogin(){
+  document.getElementById('loginOverlay').classList.add('active');
+  document.getElementById('loginError').textContent='';
+  document.getElementById('loginUser').value='';
+  document.getElementById('loginPass').value='';
+  setTimeout(()=>document.getElementById('loginUser').focus(),100);
+}
+function hideLogin(){document.getElementById('loginOverlay').classList.remove('active');}
+
+function tryLogin(){
+  const u=document.getElementById('loginUser').value.trim();
+  const p=document.getElementById('loginPass').value;
+  if(u===ADMIN_USER&&p===ADMIN_PASS){
+    hideLogin();
+    showAdminShell();
+  } else {
+    document.getElementById('loginError').textContent='Usuario o contraseña incorrectos.';
+  }
+}
+
+/* ---- SHELL ADMIN ---- */
+function showAdminShell(){
+  isAdmin=true;
+  document.getElementById('userScreen').style.display='none';
+  document.getElementById('appShell').style.display='block';
+  setSyncDot('ok');
+  refreshAllViews();
+  startPolling();
+}
+
 function tickClock(){
   const d=new Date();
   document.getElementById('clockDate').textContent=d.toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   document.getElementById('clockTime').textContent=d.toLocaleTimeString('es-MX');
 }
 
-/* ---- Tabs ---- */
 function setupTabs(){
   document.querySelectorAll('.tab-btn').forEach(btn=>{
     btn.addEventListener('click',()=>{
@@ -371,45 +558,41 @@ function setupTabs(){
     });
   });
 }
-function goToView(name){ document.querySelector(`.tab-btn[data-view="${name}"]`).click(); }
+function goToView(name){document.querySelector(`.tab-btn[data-view="${name}"]`).click();}
 
-/* ---- Dashboard ---- */
+/* ---- DASHBOARD ---- */
 function renderDashboard(){
-  const open = TICKETS.filter(t=>t.status==='Abierto'||t.status==='En proceso');
-  const critical = open.filter(t=>t.priority==='Crítica');
-  const times = TICKETS.filter(t=>t.resolved_at).map(t=>hoursBetween(t.created_at,t.resolved_at)).filter(h=>h!==null);
-  const avg = times.length ? times.reduce((a,b)=>a+b,0)/times.length : null;
-  const today = new Date().toDateString();
-  const closedToday = TICKETS.filter(t=>t.resolved_at && new Date(t.resolved_at).toDateString()===today);
-
-  document.getElementById('kpiRow').innerHTML = [
+  const open=TICKETS.filter(t=>t.status==='Abierto'||t.status==='En proceso');
+  const critical=open.filter(t=>t.priority==='Crítica');
+  const times=TICKETS.filter(t=>t.resolved_at).map(t=>hoursBetween(t.created_at,t.resolved_at)).filter(h=>h!==null);
+  const avg=times.length?times.reduce((a,b)=>a+b,0)/times.length:null;
+  const today=new Date().toDateString();
+  const closedToday=TICKETS.filter(t=>t.resolved_at&&new Date(t.resolved_at).toDateString()===today);
+  document.getElementById('kpiRow').innerHTML=[
     {num:open.length,lab:'Tickets abiertos',cls:open.length>0?'warn':'ok'},
     {num:critical.length,lab:'Prioridad crítica',cls:critical.length>0?'crit':'ok'},
     {num:TICKETS.length,lab:'Total histórico',cls:''},
     {num:closedToday.length,lab:'Resueltos hoy',cls:'ok'},
     {num:avg!==null?fmtHours(avg):'—',lab:'Tiempo prom. resolución',cls:''},
   ].map(k=>`<div class="kpi ${k.cls}"><div class="num">${k.num}</div><div class="lab">${k.lab}</div></div>`).join('');
-
-  const sorted = open.slice().sort((a,b)=>priorityWeight(b.priority)-priorityWeight(a.priority));
-  document.getElementById('dashOpenTable').innerHTML = sorted.slice(0,8).map(t=>`
+  const sorted=open.slice().sort((a,b)=>priorityWeight(b.priority)-priorityWeight(a.priority));
+  document.getElementById('dashOpenTable').innerHTML=sorted.slice(0,8).map(t=>`
     <tr onclick="window.__openTicket('${t.id}')">
       <td class="ticket-id">${t.id}</td><td>${escapeHtml(t.requester)}</td>
       <td><span class="pill pr-${slugify(t.priority)}">${t.priority}</span></td>
       <td><span class="pill st-${slugify(t.status)}">${t.status}</span></td>
       <td>${escapeHtml(t.technician||'Sin asignar')}</td>
-    </tr>`).join('') || `<tr class="empty-row"><td colspan="5">No hay tickets abiertos.</td></tr>`;
+    </tr>`).join('')||`<tr class="empty-row"><td colspan="5">No hay tickets abiertos.</td></tr>`;
 }
 
-/* ---- Tickets table ---- */
+/* ---- TICKETS TABLE ---- */
 let sortState={key:'created_at',dir:-1};
-
 function populateFilterTech(){
   const sel=document.getElementById('filterTech');
   const cur=sel.value;
   sel.innerHTML='<option value="">Todos</option>'+TECHS.map(t=>`<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`).join('');
   sel.value=cur;
 }
-
 function getFiltered(){
   const q=document.getElementById('searchInput').value.trim().toLowerCase();
   const fS=document.getElementById('filterStatus').value;
@@ -424,15 +607,14 @@ function getFiltered(){
   }).sort((a,b)=>{
     let av=a[sortState.key],bv=b[sortState.key];
     if(sortState.key==='priority'){av=priorityWeight(av);bv=priorityWeight(bv);}
-    av=av??''; bv=bv??'';
+    av=av??'';bv=bv??'';
     return av<bv?-sortState.dir:av>bv?sortState.dir:0;
   });
 }
-
 function renderTicketsTable(){
   populateFilterTech();
   const list=getFiltered();
-  document.getElementById('ticketsTableBody').innerHTML = list.map(t=>`
+  document.getElementById('ticketsTableBody').innerHTML=list.map(t=>`
     <tr onclick="window.__openTicket('${t.id}')">
       <td class="ticket-id">${t.id}</td><td>${escapeHtml(t.requester)}</td>
       <td>${escapeHtml(t.department)}</td>
@@ -440,16 +622,15 @@ function renderTicketsTable(){
       <td><span class="pill st-${slugify(t.status)}">${t.status}</span></td>
       <td>${escapeHtml(t.technician||'Sin asignar')}</td>
       <td>${fmtDateTime(t.created_at)}</td><td>${fmtDateTime(t.resolved_at)}</td>
-    </tr>`).join('') || `<tr class="empty-row"><td colspan="8">No hay tickets que coincidan.</td></tr>`;
+    </tr>`).join('')||`<tr class="empty-row"><td colspan="8">No hay tickets que coincidan.</td></tr>`;
 }
-
 function setupTicketTableEvents(){
   document.getElementById('searchInput').addEventListener('input',renderTicketsTable);
   document.getElementById('filterStatus').addEventListener('change',renderTicketsTable);
   document.getElementById('filterPriority').addEventListener('change',renderTicketsTable);
   document.getElementById('filterTech').addEventListener('change',()=>{
     renderTicketsTable();
-    document.getElementById('reportBtn').disabled = !document.getElementById('filterTech').value;
+    document.getElementById('reportBtn').disabled=!document.getElementById('filterTech').value;
   });
   document.querySelectorAll('th[data-sort]').forEach(th=>{
     th.addEventListener('click',()=>{
@@ -458,119 +639,88 @@ function setupTicketTableEvents(){
       renderTicketsTable();
     });
   });
-  document.getElementById('reportBtn').addEventListener('click', generateReport);
+  document.getElementById('reportBtn').addEventListener('click',generateReport);
 }
 
 function generateReport(){
-  const name = document.getElementById('filterTech').value;
+  const name=document.getElementById('filterTech').value;
   if(!name) return;
-  const list = TICKETS.filter(t=>t.technician===name);
-  const resolved = list.filter(t=>t.resolved_at);
-  const times = resolved.map(t=>hoursBetween(t.created_at,t.resolved_at)).filter(h=>h!==null);
-  const avg = times.length?times.reduce((a,b)=>a+b,0)/times.length:null;
-  const now = new Date().toLocaleString('es-MX',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
-  const rows = list.map(t=>`<tr><td>${escapeHtml(t.id)}</td><td>${escapeHtml(t.requester)}</td><td>${escapeHtml(t.department)}</td><td>${escapeHtml(t.priority)}</td><td>${escapeHtml(t.status)}</td><td>${fmtDateTime(t.created_at)}</td><td>${fmtDateTime(t.resolved_at)}</td><td>${t.resolved_at?fmtHours(hoursBetween(t.created_at,t.resolved_at)):'—'}</td></tr>`).join('');
-  const html=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Reporte — ${name}</title>
-  <style>body{font-family:Arial,sans-serif;font-size:12px;padding:30px;}h1{font-size:18px;margin-bottom:2px;}.sub{color:#666;margin-bottom:18px;font-size:11px;}.kpis{display:flex;gap:30px;margin-bottom:20px;}.kpi .n{font-size:26px;font-weight:bold;line-height:1;}.kpi .l{font-size:10px;color:#666;text-transform:uppercase;}table{width:100%;border-collapse:collapse;font-size:11px;}th{background:#111;color:#fff;padding:6px 8px;text-align:left;font-size:10px;text-transform:uppercase;}td{padding:6px 8px;border-bottom:1px solid #ddd;}tr:nth-child(even) td{background:#f7f7f5;}.footer{margin-top:18px;font-size:10px;color:#888;}</style></head><body>
+  const list=TICKETS.filter(t=>t.technician===name);
+  const resolved=list.filter(t=>t.resolved_at);
+  const times=resolved.map(t=>hoursBetween(t.created_at,t.resolved_at)).filter(h=>h!==null);
+  const avg=times.length?times.reduce((a,b)=>a+b,0)/times.length:null;
+  const now=new Date().toLocaleString('es-MX',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const rows=list.map(t=>`<tr><td>${escapeHtml(t.id)}</td><td>${escapeHtml(t.requester)}</td><td>${escapeHtml(t.department)}</td><td>${escapeHtml(t.priority)}</td><td>${escapeHtml(t.status)}</td><td>${fmtDateTime(t.created_at)}</td><td>${fmtDateTime(t.resolved_at)}</td><td>${t.resolved_at?fmtHours(hoursBetween(t.created_at,t.resolved_at)):'—'}</td></tr>`).join('');
+  const html=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Reporte — ${name}</title><style>body{font-family:Arial,sans-serif;font-size:12px;padding:30px;}h1{font-size:18px;margin-bottom:2px;}.sub{color:#666;margin-bottom:18px;font-size:11px;}.kpis{display:flex;gap:30px;margin-bottom:20px;}.kpi .n{font-size:26px;font-weight:bold;line-height:1;}.kpi .l{font-size:10px;color:#666;text-transform:uppercase;}table{width:100%;border-collapse:collapse;font-size:11px;}th{background:#111;color:#fff;padding:6px 8px;text-align:left;font-size:10px;text-transform:uppercase;}td{padding:6px 8px;border-bottom:1px solid #ddd;}tr:nth-child(even) td{background:#f7f7f5;}.footer{margin-top:18px;font-size:10px;color:#888;}</style></head><body>
   <h1>Reporte — ${escapeHtml(name)}</h1><div class="sub">Generado el ${now} | Mesa de Soporte IT</div>
-  <div class="kpis">
-    <div class="kpi"><div class="n">${list.length}</div><div class="l">Total asignados</div></div>
-    <div class="kpi"><div class="n">${resolved.length}</div><div class="l">Resueltos</div></div>
-    <div class="kpi"><div class="n">${list.length-resolved.length}</div><div class="l">Abiertos/en proceso</div></div>
-    <div class="kpi"><div class="n">${avg!==null?fmtHours(avg):'—'}</div><div class="l">Tiempo prom.</div></div>
-  </div>
-  <table><thead><tr><th>Folio</th><th>Solicitante</th><th>Depto.</th><th>Prioridad</th><th>Estado</th><th>Solicitado</th><th>Resuelto</th><th>Tiempo</th></tr></thead>
-  <tbody>${rows||'<tr><td colspan="8" style="text-align:center;padding:20px;color:#999;">Sin tickets asignados</td></tr>'}</tbody></table>
-  <div class="footer">Mesa de Soporte IT — Reporte individual</div>
-  <script>window.print();<\/script></body></html>`;
-  const w=window.open('','_blank'); w.document.write(html); w.document.close();
+  <div class="kpis"><div class="kpi"><div class="n">${list.length}</div><div class="l">Total asignados</div></div><div class="kpi"><div class="n">${resolved.length}</div><div class="l">Resueltos</div></div><div class="kpi"><div class="n">${list.length-resolved.length}</div><div class="l">Abiertos/en proceso</div></div><div class="kpi"><div class="n">${avg!==null?fmtHours(avg):'—'}</div><div class="l">Tiempo prom.</div></div></div>
+  <table><thead><tr><th>Folio</th><th>Solicitante</th><th>Depto.</th><th>Prioridad</th><th>Estado</th><th>Solicitado</th><th>Resuelto</th><th>Tiempo</th></tr></thead><tbody>${rows||'<tr><td colspan="8" style="text-align:center;padding:20px;color:#999;">Sin tickets asignados</td></tr>'}</tbody></table>
+  <div class="footer">Mesa de Soporte IT — Reporte individual</div><script>window.print();<\/script></body></html>`;
+  const w=window.open('','_blank');w.document.write(html);w.document.close();
 }
 
-/* ---- Modal: nuevo ticket ---- */
+/* ---- MODAL: nuevo ticket (admin) ---- */
 function openNewTicketModal(){
-  const techOpts = TECHS.map(t=>`<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`).join('');
-  const modal = document.getElementById('ticketModal');
+  const techOpts=TECHS.map(t=>`<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`).join('');
+  const modal=document.getElementById('ticketModal');
   modal.innerHTML=`
     <button class="modal-close" id="closeModalBtn">&times;</button>
     <h3>Nuevo ticket</h3>
     <div class="modal-sub">Captura los datos tal como llegaron en la solicitud</div>
-    <div class="field">
-      <label>Usuario solicitante</label>
+    <div class="field"><label>Usuario solicitante</label>
       <select id="reqSelect">
         <option value="">— Seleccionar usuario existente —</option>
         ${REQUESTERS.map(r=>`<option value="${escapeHtml(r.name)}" data-dept="${escapeHtml(r.department)}">${escapeHtml(r.name)} (${escapeHtml(r.department)})</option>`).join('')}
         <option value="__new__">+ Usuario nuevo…</option>
       </select>
       <div id="newReqFields" style="display:none;margin-top:10px;">
-        <input type="text" id="newReqName" placeholder="Nombre completo del usuario nuevo" style="margin-bottom:8px;">
+        <input type="text" id="newReqName" placeholder="Nombre completo" style="margin-bottom:8px;">
         <select id="newReqDept"><option value="">Departamento</option>${DEPTS.map(d=>`<option>${escapeHtml(d.name)}</option>`).join('')}</select>
       </div>
     </div>
     <div class="grid2">
       <div class="field"><label>Departamento</label><input type="text" id="reqDeptDisplay" disabled placeholder="Se completa al elegir usuario"></div>
-      <div class="field"><label>Prioridad</label>
-        <select id="newPriority"><option>Baja</option><option selected>Media</option><option>Alta</option><option>Crítica</option></select>
-      </div>
+      <div class="field"><label>Prioridad</label><select id="newPriority"><option>Baja</option><option selected>Media</option><option>Alta</option><option>Crítica</option></select></div>
     </div>
     <div class="field"><label>Descripción del problema</label><textarea id="newDescription" rows="4" placeholder="Describe el problema reportado…"></textarea></div>
     <div class="grid2">
       <div class="field"><label>Fecha y hora de la solicitud</label><input type="datetime-local" id="newCreatedAt"></div>
-      <div class="field"><label>Colaborador asignado (opcional)</label>
-        <select id="newTechnician"><option value="">Sin asignar</option>${techOpts}</select>
-      </div>
+      <div class="field"><label>Colaborador asignado (opcional)</label><select id="newTechnician"><option value="">Sin asignar</option>${techOpts}</select></div>
     </div>
     <hr class="divider">
-    <div class="btn-row">
-      <button class="btn" id="saveNewTicketBtn">Guardar ticket</button>
-      <button class="btn secondary" id="cancelNewTicketBtn">Cancelar</button>
-    </div>`;
-
-  document.getElementById('newCreatedAt').value = nowLocalInputValue();
-  document.getElementById('reqSelect').addEventListener('change', e=>{
+    <div class="btn-row"><button class="btn" id="saveNewTicketBtn">Guardar ticket</button><button class="btn secondary" id="cancelNewTicketBtn">Cancelar</button></div>`;
+  document.getElementById('newCreatedAt').value=nowLocalInputValue();
+  document.getElementById('reqSelect').addEventListener('change',e=>{
     const v=e.target.value;
-    document.getElementById('newReqFields').style.display = v==='__new__'?'block':'none';
-    document.getElementById('reqDeptDisplay').value = v&&v!=='__new__' ? (e.target.selectedOptions[0].dataset.dept||'') : '';
+    document.getElementById('newReqFields').style.display=v==='__new__'?'block':'none';
+    document.getElementById('reqDeptDisplay').value=v&&v!=='__new__'?(e.target.selectedOptions[0].dataset.dept||''):'';
   });
-  document.getElementById('closeModalBtn').addEventListener('click', closeModal);
-  document.getElementById('cancelNewTicketBtn').addEventListener('click', closeModal);
-  document.getElementById('saveNewTicketBtn').addEventListener('click', saveNewTicket);
+  document.getElementById('closeModalBtn').addEventListener('click',closeModal);
+  document.getElementById('cancelNewTicketBtn').addEventListener('click',closeModal);
+  document.getElementById('saveNewTicketBtn').addEventListener('click',saveNewTicket);
   openModal();
 }
-
 async function saveNewTicket(){
-  const sel = document.getElementById('reqSelect');
-  let requester='', department='';
+  const sel=document.getElementById('reqSelect');
+  let requester='',department='';
   if(sel.value==='__new__'){
-    requester = document.getElementById('newReqName').value.trim();
-    department = document.getElementById('newReqDept').value;
-    if(!requester){ showToast('Escribe el nombre del usuario nuevo'); return; }
-    if(!department){ showToast('Selecciona el departamento'); return; }
+    requester=document.getElementById('newReqName').value.trim();
+    department=document.getElementById('newReqDept').value;
+    if(!requester){showToast('Escribe el nombre del usuario nuevo');return;}
+    if(!department){showToast('Selecciona el departamento');return;}
     if(!REQUESTERS.some(r=>r.name.toLowerCase()===requester.toLowerCase())){
-      setSyncDot('busy');
-      await sbPost('requesters',{name:requester,department});
-      REQUESTERS.push({name:requester,department});
-      setSyncDot('ok');
+      setSyncDot('busy'); await sbPost('requesters',{name:requester,department}); REQUESTERS.push({name:requester,department}); setSyncDot('ok');
     }
-  } else if(!sel.value){ showToast('Selecciona o agrega un usuario'); return; }
-  else { requester=sel.value; department=sel.selectedOptions[0].dataset.dept||''; }
-
-  const description = document.getElementById('newDescription').value.trim();
-  if(!description){ showToast('Describe el problema'); return; }
-  const createdRaw = document.getElementById('newCreatedAt').value;
-  if(!createdRaw){ showToast('Indica la fecha y hora de la solicitud'); return; }
-
+  } else if(!sel.value){showToast('Selecciona o agrega un usuario');return;}
+  else{requester=sel.value;department=sel.selectedOptions[0].dataset.dept||'';}
+  const description=document.getElementById('newDescription').value.trim();
+  if(!description){showToast('Describe el problema');return;}
+  const createdRaw=document.getElementById('newCreatedAt').value;
+  if(!createdRaw){showToast('Indica la fecha y hora');return;}
   setSyncDot('busy');
-  const id = await nextId();
-  const ticket = {
-    id, requester, department, description,
-    priority: document.getElementById('newPriority').value,
-    status: 'Abierto',
-    technician: document.getElementById('newTechnician').value||'',
-    created_at: new Date(createdRaw).toISOString(),
-    resolved_at: null,
-    log: [{at:new Date().toISOString(),text:'Ticket creado'}]
-  };
-  await sbPost('tickets', ticket);
+  const id=await nextId();
+  const ticket={id,requester,department,description,priority:document.getElementById('newPriority').value,status:'Abierto',technician:document.getElementById('newTechnician').value||'',created_at:new Date(createdRaw).toISOString(),resolved_at:null,log:[{at:new Date().toISOString(),text:'Ticket creado'}]};
+  await sbPost('tickets',ticket);
   TICKETS.unshift(ticket);
   setSyncDot('ok');
   closeModal();
@@ -578,15 +728,14 @@ async function saveNewTicket(){
   refreshAllViews();
 }
 
-/* ---- Modal: detalle ticket ---- */
+/* ---- MODAL: detalle ticket (admin) ---- */
 function openTicketDetail(id){
-  const t = TICKETS.find(x=>x.id===id);
+  const t=TICKETS.find(x=>x.id===id);
   if(!t) return;
-  const techOpts = TECHS.map(tech=>`<option value="${escapeHtml(tech.name)}" ${tech.name===t.technician?'selected':''}>${escapeHtml(tech.name)}</option>`).join('');
-  const statusOpts = ['Abierto','En proceso','Resuelto','Cerrado'].map(s=>`<option ${s===t.status?'selected':''}>${s}</option>`).join('');
-  const priorityOpts = ['Baja','Media','Alta','Crítica'].map(p=>`<option ${p===t.priority?'selected':''}>${p}</option>`).join('');
-  const resTime = t.resolved_at ? hoursBetween(t.created_at,t.resolved_at) : null;
-
+  const techOpts=TECHS.map(tech=>`<option value="${escapeHtml(tech.name)}" ${tech.name===t.technician?'selected':''}>${escapeHtml(tech.name)}</option>`).join('');
+  const statusOpts=['Abierto','En proceso','Resuelto','Cerrado'].map(s=>`<option ${s===t.status?'selected':''}>${s}</option>`).join('');
+  const priorityOpts=['Baja','Media','Alta','Crítica'].map(p=>`<option ${p===t.priority?'selected':''}>${p}</option>`).join('');
+  const resTime=t.resolved_at?hoursBetween(t.created_at,t.resolved_at):null;
   document.getElementById('ticketModal').innerHTML=`
     <button class="modal-close" id="closeModalBtn">&times;</button>
     <h3>${t.id}</h3>
@@ -602,11 +751,8 @@ function openTicketDetail(id){
       <div class="field"><label>Estado</label><select id="editStatus">${statusOpts}</select></div>
       <div class="field"><label>Colaborador asignado</label><select id="editTechnician"><option value="">Sin asignar</option>${techOpts}</select></div>
     </div>
-    <div id="resolveFields" style="display:none;margin-top:10px;">
-      <div class="field">
-        <label>Fecha y hora de resolución</label>
-        <input type="datetime-local" id="editResolvedAt">
-      </div>
+    <div id="resolveFields" style="display:none;">
+      <div class="field"><label>Fecha y hora de resolución</label><input type="datetime-local" id="editResolvedAt"></div>
     </div>
     <hr class="divider">
     <div class="btn-row">
@@ -618,80 +764,55 @@ function openTicketDetail(id){
   const statusSel=document.getElementById('editStatus');
   const resolveFields=document.getElementById('resolveFields');
   const editResolvedAt=document.getElementById('editResolvedAt');
-
   function toggleResolveFields(){
-    const isResolved = statusSel.value==='Resuelto'||statusSel.value==='Cerrado';
-    resolveFields.style.display = isResolved ? 'block' : 'none';
-    if(isResolved && !editResolvedAt.value){
-      const d = t.resolved_at ? new Date(t.resolved_at) : new Date();
+    const isResolved=statusSel.value==='Resuelto'||statusSel.value==='Cerrado';
+    resolveFields.style.display=isResolved?'block':'none';
+    if(isResolved&&!editResolvedAt.value){
+      const d=t.resolved_at?new Date(t.resolved_at):new Date();
       d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
-      editResolvedAt.value = d.toISOString().slice(0,16);
+      editResolvedAt.value=d.toISOString().slice(0,16);
     }
     if(!isResolved) editResolvedAt.value='';
   }
   toggleResolveFields();
-  statusSel.addEventListener('change', toggleResolveFields);
-
+  statusSel.addEventListener('change',toggleResolveFields);
   document.getElementById('closeModalBtn').addEventListener('click',closeModal);
   document.getElementById('closeModalBtn2').addEventListener('click',closeModal);
-
-  document.getElementById('saveTicketEditBtn').addEventListener('click', async ()=>{
+  document.getElementById('saveTicketEditBtn').addEventListener('click',async()=>{
     const newStatus=statusSel.value;
-    const updates={
-      priority: document.getElementById('editPriority').value,
-      status: newStatus,
-      technician: document.getElementById('editTechnician').value||''
-    };
+    const updates={priority:document.getElementById('editPriority').value,status:newStatus,technician:document.getElementById('editTechnician').value||''};
     if(newStatus==='Resuelto'||newStatus==='Cerrado'){
-      const rv = document.getElementById('editResolvedAt').value;
-      updates.resolved_at = rv ? new Date(rv).toISOString() : (t.resolved_at || new Date().toISOString());
-    } else {
-      updates.resolved_at = null;
-    }
-    updates.log = [...(t.log||[]), {at:new Date().toISOString(),text:`Actualizado: ${newStatus}`}];
-    setSyncDot('busy');
-    await sbPatch('tickets',{id:t.id},updates);
-    Object.assign(t, updates);
-    setSyncDot('ok');
-    closeModal();
-    showToast(`Ticket ${t.id} actualizado`);
-    refreshAllViews();
+      const rv=editResolvedAt.value;
+      updates.resolved_at=rv?new Date(rv).toISOString():(t.resolved_at||new Date().toISOString());
+    } else {updates.resolved_at=null;}
+    updates.log=[...(t.log||[]),{at:new Date().toISOString(),text:`Actualizado: ${newStatus}`}];
+    setSyncDot('busy'); await sbPatch('tickets',{id:t.id},updates); Object.assign(t,updates); setSyncDot('ok');
+    closeModal(); showToast(`Ticket ${t.id} actualizado`); refreshAllViews();
   });
-
-  document.getElementById('deleteTicketBtn').addEventListener('click', async ()=>{
+  document.getElementById('deleteTicketBtn').addEventListener('click',async()=>{
     if(!confirm(`¿Eliminar definitivamente el ticket ${t.id}?`)) return;
-    setSyncDot('busy');
-    await sbDelete('tickets',{id:t.id});
-    TICKETS = TICKETS.filter(x=>x.id!==t.id);
-    setSyncDot('ok');
-    closeModal();
-    showToast(`Ticket ${t.id} eliminado`);
-    refreshAllViews();
+    setSyncDot('busy'); await sbDelete('tickets',{id:t.id}); TICKETS=TICKETS.filter(x=>x.id!==t.id); setSyncDot('ok');
+    closeModal(); showToast(`Ticket ${t.id} eliminado`); refreshAllViews();
   });
-
   openModal();
 }
-window.__openTicket = openTicketDetail;
+window.__openTicket=openTicketDetail;
 
-function openModal(){ document.getElementById('ticketOverlay').classList.add('active'); }
-function closeModal(){ document.getElementById('ticketOverlay').classList.remove('active'); }
+function openModal(){document.getElementById('ticketOverlay').classList.add('active');}
+function closeModal(){document.getElementById('ticketOverlay').classList.remove('active');}
 
-/* ---- Metrics ---- */
+/* ---- METRICS ---- */
 function renderMetrics(){
-  const real = TECHS.filter(t=>t.name!=='Sin asignar');
-  if(!real.length){
-    document.getElementById('metricsContainer').innerHTML=`<div class="panel"><p style="margin:0;color:#6b6358;font-family:var(--mono);font-size:12.5px;">Agrega colaboradores en Catálogos para ver sus métricas.</p></div>`;
-    return;
-  }
-  const maxRes = Math.max(1,...real.map(t=>TICKETS.filter(k=>k.technician===t.name&&k.resolved_at).length));
-  document.getElementById('metricsContainer').innerHTML = real.map(({name})=>{
+  const real=TECHS.filter(t=>!isProtectedName(t.name));
+  if(!real.length){document.getElementById('metricsContainer').innerHTML=`<div class="panel"><p style="margin:0;color:#6b6358;font-family:var(--mono);font-size:12.5px;">Agrega colaboradores en Catálogos para ver sus métricas.</p></div>`;return;}
+  const maxRes=Math.max(1,...real.map(t=>TICKETS.filter(k=>k.technician===t.name&&k.resolved_at).length));
+  document.getElementById('metricsContainer').innerHTML=real.map(({name})=>{
     const own=TICKETS.filter(t=>t.technician===name);
     const resolved=own.filter(t=>t.resolved_at);
     const times=resolved.map(t=>hoursBetween(t.created_at,t.resolved_at)).filter(h=>h!==null);
     const avg=times.length?times.reduce((a,b)=>a+b,0)/times.length:null;
     const pct=Math.round(resolved.length/maxRes*100);
-    return `<div class="tech-card">
-      <div class="row1"><div class="name">${escapeHtml(name)}</div><div class="small-note" style="margin:0;">${own.length} ticket${own.length!==1?'s':''} asignados</div></div>
+    return `<div class="tech-card"><div class="row1"><div class="name">${escapeHtml(name)}</div><div class="small-note" style="margin:0;">${own.length} ticket${own.length!==1?'s':''} asignados</div></div>
       <div class="stat-grid">
         <div class="stat"><div class="v">${resolved.length}</div><div class="l">Resueltos</div></div>
         <div class="stat"><div class="v">${own.length-resolved.length}</div><div class="l">Abiertos/proceso</div></div>
@@ -703,194 +824,167 @@ function renderMetrics(){
   }).join('');
 }
 
-/* ---- Catalogs ---- */
+/* ---- CATALOGS ---- */
 function renderCatalogs(){
-  renderTechList(); renderDeptList(); renderUserList();
+  renderTechList();renderDeptList();renderUserList();
   const sel=document.getElementById('newUserDept');
   sel.innerHTML='<option value="">Departamento</option>'+DEPTS.map(d=>`<option>${escapeHtml(d.name)}</option>`).join('');
 }
-
 function renderTechList(){
   document.getElementById('techList').innerHTML=TECHS.map(({name})=>{
     const used=TICKETS.filter(t=>t.technician===name).length;
-    const protected_ = ['Sin asignar','sin asignar'].includes(name.toLowerCase().trim());
-    const btn=protected_?'':` <button class="remove-btn" data-name="${escapeHtml(name)}">Quitar</button>`;
+    const btn=isProtectedName(name)?'':` <button class="remove-btn" data-name="${escapeHtml(name)}">Quitar</button>`;
     return `<li><span>${escapeHtml(name)} <span class="tag">(${used} ticket${used!==1?'s':''})</span></span>${btn}</li>`;
   }).join('');
   document.querySelectorAll('#techList .remove-btn').forEach(btn=>{
-    btn.addEventListener('click', async ()=>{
+    btn.addEventListener('click',async()=>{
       const name=btn.dataset.name;
-      if(TICKETS.some(t=>t.technician===name)){ showToast(`No se puede quitar: tiene tickets asignados`); return; }
-      setSyncDot('busy'); await sbDelete('technicians',{name}); TECHS=TECHS.filter(t=>t.name!==name); setSyncDot('ok');
-      renderCatalogs(); showToast(`"${name}" eliminado`);
+      if(TICKETS.some(t=>t.technician===name)){showToast('No se puede quitar: tiene tickets asignados');return;}
+      setSyncDot('busy');await sbDelete('technicians',{name});TECHS=TECHS.filter(t=>t.name!==name);setSyncDot('ok');
+      renderCatalogs();showToast(`"${name}" eliminado`);
     });
   });
 }
-
 function renderDeptList(){
   document.getElementById('deptList').innerHTML=DEPTS.map(({name})=>{
     const used=TICKETS.filter(t=>t.department===name).length;
-    const protected2_ = ['Sin especificar','sin especificar'].includes(name.toLowerCase().trim());
-    const btn=protected2_?'':` <button class="remove-btn" data-name="${escapeHtml(name)}">Quitar</button>`;
+    const btn=isProtectedName(name)?'':` <button class="remove-btn" data-name="${escapeHtml(name)}">Quitar</button>`;
     return `<li><span>${escapeHtml(name)} <span class="tag">(${used} ticket${used!==1?'s':''})</span></span>${btn}</li>`;
   }).join('');
   document.querySelectorAll('#deptList .remove-btn').forEach(btn=>{
-    btn.addEventListener('click', async ()=>{
+    btn.addEventListener('click',async()=>{
       const name=btn.dataset.name;
-      if(TICKETS.some(t=>t.department===name)||REQUESTERS.some(r=>r.department===name)){ showToast('No se puede quitar: está en uso'); return; }
-      setSyncDot('busy'); await sbDelete('departments',{name}); DEPTS=DEPTS.filter(d=>d.name!==name); setSyncDot('ok');
-      renderCatalogs(); showToast(`"${name}" eliminado`);
+      if(TICKETS.some(t=>t.department===name)||REQUESTERS.some(r=>r.department===name)){showToast('No se puede quitar: está en uso');return;}
+      setSyncDot('busy');await sbDelete('departments',{name});DEPTS=DEPTS.filter(d=>d.name!==name);setSyncDot('ok');
+      renderCatalogs();showToast(`"${name}" eliminado`);
     });
   });
 }
-
 function renderUserList(){
   document.getElementById('userList').innerHTML=REQUESTERS.map(({name,department})=>{
     const used=TICKETS.filter(t=>t.requester===name).length;
     return `<li><span>${escapeHtml(name)} <span class="tag">(${escapeHtml(department)} · ${used} ticket${used!==1?'s':''})</span></span><button class="remove-btn" data-name="${escapeHtml(name)}">Quitar</button></li>`;
   }).join('');
   document.querySelectorAll('#userList .remove-btn').forEach(btn=>{
-    btn.addEventListener('click', async ()=>{
+    btn.addEventListener('click',async()=>{
       const name=btn.dataset.name;
-      if(TICKETS.some(t=>t.requester===name)){ showToast('No se puede quitar: tiene tickets registrados'); return; }
-      setSyncDot('busy'); await sbDelete('requesters',{name}); REQUESTERS=REQUESTERS.filter(r=>r.name!==name); setSyncDot('ok');
-      renderCatalogs(); showToast(`"${name}" eliminado`);
+      if(TICKETS.some(t=>t.requester===name)){showToast('No se puede quitar: tiene tickets registrados');return;}
+      setSyncDot('busy');await sbDelete('requesters',{name});REQUESTERS=REQUESTERS.filter(r=>r.name!==name);setSyncDot('ok');
+      renderCatalogs();showToast(`"${name}" eliminado`);
     });
   });
 }
-
 function setupCatalogEvents(){
-  async function addItem(inputId, list, table, makeObj, refresh){
+  async function addItem(inputId,list,table,makeObj,refresh){
     const input=document.getElementById(inputId);
     const name=input.value.trim();
-    if(!name){ showToast('Escribe un nombre'); return; }
-    if(list.some(i=>(i.name||i).toLowerCase()===name.toLowerCase())){ showToast('Ya existe'); return; }
-    setSyncDot('busy');
-    await sbPost(table, makeObj(name));
-    list.push(makeObj(name));
-    setSyncDot('ok');
-    input.value='';
-    refresh();
-    showToast(`"${name}" agregado`);
+    if(!name){showToast('Escribe un nombre');return;}
+    if(list.some(i=>(i.name||i).toLowerCase()===name.toLowerCase())){showToast('Ya existe');return;}
+    setSyncDot('busy');await sbPost(table,makeObj(name));list.push(makeObj(name));setSyncDot('ok');
+    input.value='';refresh();showToast(`"${name}" agregado`);
   }
-
-  document.getElementById('addTechBtn').addEventListener('click',()=>
-    addItem('newTechInput', TECHS, 'technicians', n=>({name:n}), ()=>renderCatalogs()));
-  document.getElementById('addDeptBtn').addEventListener('click',()=>
-    addItem('newDeptInput', DEPTS, 'departments', n=>({name:n}), ()=>renderCatalogs()));
-  document.getElementById('addUserBtn').addEventListener('click', async ()=>{
+  document.getElementById('addTechBtn').addEventListener('click',()=>addItem('newTechInput',TECHS,'technicians',n=>({name:n}),()=>renderCatalogs()));
+  document.getElementById('addDeptBtn').addEventListener('click',()=>addItem('newDeptInput',DEPTS,'departments',n=>({name:n}),()=>renderCatalogs()));
+  document.getElementById('addUserBtn').addEventListener('click',async()=>{
     const name=document.getElementById('newUserInput').value.trim();
     const dept=document.getElementById('newUserDept').value;
-    if(!name){ showToast('Escribe el nombre del usuario'); return; }
-    if(!dept){ showToast('Selecciona un departamento'); return; }
-    if(REQUESTERS.some(r=>r.name.toLowerCase()===name.toLowerCase())){ showToast('Ya existe'); return; }
-    setSyncDot('busy');
-    await sbPost('requesters',{name,department:dept});
-    REQUESTERS.push({name,department:dept});
-    setSyncDot('ok');
-    document.getElementById('newUserInput').value='';
-    renderCatalogs();
-    showToast(`"${name}" agregado`);
+    if(!name){showToast('Escribe el nombre del usuario');return;}
+    if(!dept){showToast('Selecciona un departamento');return;}
+    if(REQUESTERS.some(r=>r.name.toLowerCase()===name.toLowerCase())){showToast('Ya existe');return;}
+    setSyncDot('busy');await sbPost('requesters',{name,department:dept});REQUESTERS.push({name,department:dept});setSyncDot('ok');
+    document.getElementById('newUserInput').value='';renderCatalogs();showToast(`"${name}" agregado`);
   });
-
   [['newTechInput','addTechBtn'],['newDeptInput','addDeptBtn'],['newUserInput','addUserBtn']].forEach(([i,b])=>{
-    document.getElementById(i).addEventListener('keydown',e=>{ if(e.key==='Enter'){e.preventDefault();document.getElementById(b).click();} });
+    document.getElementById(i).addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();document.getElementById(b).click();}});
   });
 }
 
-/* ---- Refresh ---- */
+/* ---- NOTIFICACIONES ---- */
+let notifPermission='default';
+function playBeep(){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.connect(g);g.connect(ctx.destination);
+    o.type='sine';o.frequency.setValueAtTime(880,ctx.currentTime);
+    g.gain.setValueAtTime(0.4,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.6);
+    o.start();o.stop(ctx.currentTime+0.6);
+  }catch(e){}
+}
+function showDesktopNotif(ticket){
+  playBeep();
+  if(notifPermission!=='granted') return;
+  const n=new Notification('Nuevo ticket — Mesa de Soporte IT',{
+    body:`${ticket.id} · ${ticket.requester}\n${ticket.description.slice(0,80)}${ticket.description.length>80?'…':''}`,
+    tag:ticket.id
+  });
+  setTimeout(()=>n.close(),8000);
+}
+
+/* ---- POLLING ---- */
+let pollingStarted=false;
+function startPolling(){
+  if(pollingStarted) return;
+  pollingStarted=true;
+  setInterval(async()=>{
+    try{
+      const[t,tc,d,r]=await Promise.all([sbGet('tickets'),sbGet('technicians'),sbGet('departments'),sbGet('requesters')]);
+      const knownIds=new Set(TICKETS.map(x=>x.id));
+      const newTickets=t.filter(x=>!knownIds.has(x.id));
+      TICKETS=t;TECHS=tc;DEPTS=d;REQUESTERS=r;
+      setSyncDot('ok');
+      if(isAdmin) refreshAllViews();
+      newTickets.forEach(tk=>showDesktopNotif(tk));
+    }catch(e){setSyncDot('err');}
+  },30000);
+}
+
 function refreshAllViews(){
-  const active = document.querySelector('.tab-btn.active')?.dataset.view;
-  renderDashboard();
-  renderTicketsTable();
+  const active=document.querySelector('.tab-btn.active')?.dataset.view;
+  renderDashboard();renderTicketsTable();
   if(active==='metrics') renderMetrics();
   if(active==='catalogs') renderCatalogs();
 }
 
-/* ---- Notificaciones ---- */
-let notifPermission = 'default';
-
-function requestNotifPermission(){
-  if(!('Notification' in window)) return;
-  Notification.requestPermission().then(p=>{ notifPermission=p; });
-}
-
-function playBeep(){
-  try{
-    const ctx = new (window.AudioContext||window.webkitAudioContext)();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.connect(g); g.connect(ctx.destination);
-    o.type='sine'; o.frequency.setValueAtTime(880, ctx.currentTime);
-    g.gain.setValueAtTime(0.4, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.6);
-    o.start(); o.stop(ctx.currentTime+0.6);
-  }catch(e){}
-}
-
-function showDesktopNotif(ticket){
-  playBeep();
-  if(notifPermission!=='granted') return;
-  const n = new Notification('Nuevo ticket — Mesa de Soporte IT', {
-    body: `${ticket.id} · ${ticket.requester}\n${ticket.description.slice(0,80)}${ticket.description.length>80?'…':''}`,
-    icon: 'https://img.icons8.com/ios-filled/50/b5502f/maintenance.png',
-    tag: ticket.id
-  });
-  setTimeout(()=>n.close(), 8000);
-}
-
-/* ---- Polling cada 30s para ver cambios de otros usuarios ---- */
-function startPolling(){
-  setInterval(async ()=>{
-    try{
-      const [t,tc,d,r] = await Promise.all([
-        sbGet('tickets'), sbGet('technicians'), sbGet('departments'), sbGet('requesters')
-      ]);
-      // Detectar tickets nuevos comparando IDs
-      const knownIds = new Set(TICKETS.map(x=>x.id));
-      const newTickets = t.filter(x=>!knownIds.has(x.id));
-      TICKETS=t; TECHS=tc; DEPTS=d; REQUESTERS=r;
-      setSyncDot('ok');
-      refreshAllViews();
-      newTickets.forEach(tk=>showDesktopNotif(tk));
-    }catch(e){ setSyncDot('err'); }
-  }, 30000);
-}
-
-/* ---- Init ---- */
+/* ---- INIT ---- */
 async function init(){
   try{
     await loadAll();
   }catch(e){
-    setSyncDot('err');
-    document.querySelector('#loadingScreen .l2').textContent='Error al conectar con Supabase. Verifica la consola.';
-    console.error(e);
-    return;
+    document.querySelector('#loadingScreen .l2').textContent='Error al conectar con Supabase.';
+    console.error(e);return;
   }
+  document.getElementById('loadingScreen').style.display='none';
 
-  tickClock(); setInterval(tickClock,1000);
-  setupTabs(); setupTicketTableEvents(); setupCatalogEvents();
+  // Eventos login
+  document.getElementById('adminLinkBtn').addEventListener('click',showLogin);
+  document.getElementById('loginCloseBtn').addEventListener('click',hideLogin);
+  document.getElementById('loginSubmitBtn').addEventListener('click',tryLogin);
+  document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter') tryLogin();});
 
-  document.getElementById('openNewTicketBtn').addEventListener('click', openNewTicketModal);
-  document.getElementById('quickNewTicket').addEventListener('click',()=>{ goToView('tickets'); setTimeout(openNewTicketModal,50); });
-  document.getElementById('ticketOverlay').addEventListener('click',e=>{ if(e.target.id==='ticketOverlay') closeModal(); });
-  const notifBtn = document.getElementById('notifBtn');
-  notifBtn.addEventListener('click',()=>{
-    requestNotifPermission();
+  // Eventos usuario
+  document.getElementById('ucSubmitBtn').addEventListener('click',submitUserTicket);
+
+  // Eventos admin shell
+  setupTabs();setupTicketTableEvents();setupCatalogEvents();
+  document.getElementById('openNewTicketBtn').addEventListener('click',openNewTicketModal);
+  document.getElementById('quickNewTicket').addEventListener('click',()=>{goToView('tickets');setTimeout(openNewTicketModal,50);});
+  document.getElementById('ticketOverlay').addEventListener('click',e=>{if(e.target.id==='ticketOverlay') closeModal();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape') closeModal();});
+  document.getElementById('logoutBtn').addEventListener('click',()=>{isAdmin=false;showUserScreen();});
+  document.getElementById('notifBtn').addEventListener('click',()=>{
     Notification.requestPermission().then(p=>{
       notifPermission=p;
-      if(p==='granted'){ notifBtn.textContent='🔔 Notificaciones activas'; notifBtn.disabled=true; }
-      else { showToast('Permiso denegado. Actívalo en la configuración del navegador.'); }
+      if(p==='granted'){document.getElementById('notifBtn').textContent='🔔 Notificaciones activas';document.getElementById('notifBtn').disabled=true;}
+      else showToast('Permiso denegado. Actívalo en la configuración del navegador.');
     });
   });
-  if(Notification.permission==='granted'){ notifPermission='granted'; notifBtn.textContent='🔔 Notificaciones activas'; notifBtn.disabled=true; }
-  document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
+  if(Notification.permission==='granted'){notifPermission='granted';document.getElementById('notifBtn').textContent='🔔 Notificaciones activas';document.getElementById('notifBtn').disabled=true;}
 
-  refreshAllViews();
+  tickClock();setInterval(tickClock,1000);
+  showUserScreen();
   startPolling();
-
-  document.getElementById('loadingScreen').style.display='none';
-  document.getElementById('appShell').style.display='block';
 }
 
 init();
