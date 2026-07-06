@@ -130,8 +130,9 @@
   .success-msg .s-icon{font-size:48px;margin-bottom:12px;}
   .success-msg h3{font-family:var(--serif);font-size:20px;margin:0 0 6px;}
   .success-msg p{font-family:var(--mono);font-size:12px;color:#6b6358;margin:0 0 20px;}
-  .admin-link{position:fixed;bottom:16px;right:20px;font-family:var(--mono);font-size:11px;color:#b9b2a3;background:none;border:none;cursor:pointer;text-decoration:underline;}
+  .admin-link{position:fixed;bottom:16px;right:20px;font-family:var(--mono);font-size:11px;color:#b9b2a3;background:none;border:none;cursor:pointer;text-decoration:underline;z-index:160;}
   .admin-link:hover{color:var(--ink);}
+  #loginOverlay{z-index:300;}
 </style>
 </head>
 <body>
@@ -190,7 +191,7 @@
   <button class="admin-link" id="adminLinkBtn">Administrador</button>
 </div>
 
-<!-- LOGIN ADMIN -->
+<!-- LOGIN ADMIN (fuera del userScreen para evitar superposición) -->
 <div class="overlay" id="loginOverlay">
   <div class="modal" style="max-width:360px;">
     <button class="modal-close" id="loginCloseBtn">&times;</button>
@@ -500,7 +501,7 @@ async function submitUserTicket(){
       </div>
       <div class="field" id="ucDeptDisplay" style="display:none;"><label>Departamento</label><input type="text" id="ucDeptText" disabled></div>
       <div class="field"><label>Describe el problema</label><textarea id="ucDescription" rows="4" placeholder="Explica lo que está pasando con detalle…"></textarea></div>
-      <div class="field"><label>¿A quién deseas que te atienda? (opcional)</label><select id="ucTechSelect"><option value="">Sin preferencia</option></select></div>
+      <div class="field"><label>Elige al personal (opcional)</label><select id="ucTechSelect"><option value="">Sin preferencia</option></select></div>
       <div class="btn-row"><button class="btn" id="ucSubmitBtn" style="width:100%;">Enviar solicitud</button></div>`;
     populateUserScreen();
     document.getElementById('ucSubmitBtn').addEventListener('click',submitUserTicket);
