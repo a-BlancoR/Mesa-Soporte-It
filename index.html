@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mesa de Soporte IT</title>
+<title>Mesa de Ayuda &middot; Secretaría del Trabajo</title>
 <style>
   :root{
     --ink:#1a1a1a;--paper:#f5f5f5;--panel:#ffffff;--line:#e0dada;--line-strong:#c9bcbc;
@@ -17,16 +17,21 @@
   *{box-sizing:border-box;}
   body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.45;}
   .shell{max-width:1280px;margin:0 auto;padding:0 28px 80px;}
-  header.top{background:var(--accent);padding:18px 28px;margin-bottom:0;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;}
-  .brand{display:flex;align-items:center;gap:14px;}
-  .brand .mark{font-family:var(--sans);font-size:11px;letter-spacing:.08em;color:#fff;border:1px solid var(--gold);padding:3px 8px;border-radius:3px;text-transform:uppercase;background:transparent;}
-  .brand h1{font-family:var(--sans);font-weight:700;font-size:22px;margin:0;color:#fff;letter-spacing:0;}
-  .brand .sub{font-family:var(--sans);font-size:11px;color:rgba(255,255,255,.75);letter-spacing:.02em;}
-  .clock{font-family:var(--sans);font-size:12px;color:rgba(255,255,255,.8);text-align:right;}
-  .clock strong{color:#fff;display:block;font-size:13px;}
-  nav.tabs{display:flex;gap:2px;padding:0 28px;background:#fff;border-bottom:3px solid var(--accent);}
+  .inst-header{background:var(--accent);padding:0 28px 0 0;border-bottom:4px solid var(--accent);display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;}
+  .inst-header .logo-wrap{display:flex;align-items:center;gap:20px;}
+  .inst-header .logo-plate{background:#fff;padding:6px 14px;display:flex;align-items:center;}
+  .inst-header .logo-img{height:118px;width:auto;display:block;}
+  .inst-header .module-tag{font-family:var(--sans);border-left:2px solid rgba(255,255,255,.3);padding-left:20px;}
+  .inst-header .module-tag h1{font-family:var(--sans);font-weight:700;font-size:22px;margin:0;color:#fff;letter-spacing:.01em;text-transform:uppercase;display:flex;align-items:center;}
+  .inst-header .module-tag .sub{font-family:var(--sans);font-size:13px;color:rgba(255,255,255,.85);letter-spacing:.02em;margin-top:2px;}
+  .inst-header .right-controls{display:flex;align-items:center;gap:16px;}
+  .clock{font-family:var(--sans);font-size:12px;color:#8a8378;text-align:right;}
+  .clock strong{color:var(--ink);display:block;font-size:13px;}
+  .inst-breadcrumb{background:#faf8f6;padding:9px 28px;font-family:var(--mono);font-size:11px;color:#8a8378;border-bottom:1px solid var(--line);letter-spacing:.02em;}
+  .inst-breadcrumb .crumb.current{color:var(--accent);font-weight:700;}
+  nav.tabs{display:flex;gap:2px;padding:0 28px;background:#fff;border-bottom:1px solid var(--line);}
   nav.tabs button{font-family:var(--sans);font-size:12.5px;letter-spacing:.02em;text-transform:uppercase;background:none;border:none;cursor:pointer;padding:13px 18px;color:#666;position:relative;top:1px;font-weight:500;}
-  nav.tabs button.active{color:var(--accent);border-bottom:3px solid var(--gold);font-weight:700;}
+  nav.tabs button.active{color:var(--accent);border-bottom:3px solid var(--accent);font-weight:700;}
   nav.tabs button:hover{color:var(--accent);}
   main{padding-top:26px;}
   .view{display:none;}
@@ -59,6 +64,7 @@
   .kpi.ok::before{background:var(--ok);}
   .kpi .num{font-family:var(--serif);font-size:30px;font-weight:600;line-height:1;}
   .kpi .lab{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:#6b6358;margin-top:6px;}
+  .kpi svg.peak{display:block;margin-bottom:8px;}
   .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:18px;}
   .toolbar .field{margin-bottom:0;min-width:150px;flex:1;}
   .toolbar .field.grow{flex:2;}
@@ -122,9 +128,9 @@
   @keyframes pulse{to{opacity:.3;}}
 
   /* ---- Pantalla usuario ---- */
-  #userScreen{position:fixed;inset:0;background:var(--paper);display:flex;align-items:center;justify-content:center;padding:24px;z-index:150;overflow-y:auto;}
+  #userScreen{position:fixed;inset:0;background:var(--paper);display:flex;flex-direction:column;align-items:stretch;padding:0;z-index:150;overflow-y:auto;}
+  .user-card-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:24px;width:100%;}
   .user-card{background:var(--panel);border:1px solid var(--line);border-radius:8px;max-width:520px;width:100%;padding:36px 32px 28px;box-shadow:0 8px 40px rgba(0,0,0,.1);}
-  .user-card .uc-mark{font-family:var(--sans);font-size:11px;letter-spacing:.08em;color:#fff;background:var(--accent);border:none;padding:4px 10px;border-radius:3px;text-transform:uppercase;display:inline-block;margin-bottom:14px;font-weight:600;}
   .user-card h2{font-family:var(--sans);font-size:24px;font-weight:700;margin:0 0 4px;color:var(--accent);}
   .user-card .uc-sub{font-family:var(--sans);font-size:12px;color:#666;margin-bottom:24px;}
   .success-msg{text-align:center;padding:20px 0;}
@@ -139,54 +145,65 @@
 <body>
 
 <div class="loading-screen" id="loadingScreen">
-  <div class="l1">Mesa de Soporte IT</div>
+  <div class="l1">Mesa de Ayuda &middot; Secretaría del Trabajo</div>
   <div class="l2">Conectando&hellip;</div>
 </div>
 
 <!-- PANTALLA USUARIO -->
 <div id="userScreen" style="display:none;">
-  <div class="user-card" id="userCard">
-    <span class="uc-mark">Soporte IT</span>
-    <h2>Reportar un problema</h2>
-    <div class="uc-sub">Completa el formulario y el equipo de informática atenderá tu solicitud.</div>
-
-    <div class="field">
-      <label>Tu nombre</label>
-      <select id="ucUserSelect">
-        <option value="">— Selecciona tu nombre —</option>
-        <option value="__new__">+ Mi nombre no está en la lista</option>
-      </select>
-      <div id="ucNewNameWrap" style="display:none;margin-top:8px;">
-        <input type="text" id="ucNewName" placeholder="Escribe tu nombre completo">
+  <header class="inst-header">
+    <div class="logo-wrap">
+      <div class="logo-plate"><img class="logo-img" src="LOGO%20ST.png" alt="Gobierno de Sonora · Secretaría del Trabajo"></div>
+      <div class="module-tag">
+        <h1>Mesa de Ayuda</h1>
+        <div class="sub">Soporte técnico · Secretaría del Trabajo</div>
       </div>
     </div>
+  </header>
+  <div class="inst-breadcrumb">🏠&nbsp; / &nbsp;Mesa de Ayuda&nbsp; / &nbsp;<span class="crumb current">Reportar un problema</span></div>
+  <div class="user-card-wrap">
+    <div class="user-card" id="userCard">
+      <h2>Reportar un problema</h2>
+      <div class="uc-sub">Completa el formulario y el equipo de informática atenderá tu solicitud.</div>
 
-    <div class="field" id="ucDeptField" style="display:none;">
-      <label>Departamento</label>
-      <select id="ucDeptSelect">
-        <option value="">— Selecciona tu departamento —</option>
-      </select>
-    </div>
+      <div class="field">
+        <label>Tu nombre</label>
+        <select id="ucUserSelect">
+          <option value="">— Selecciona tu nombre —</option>
+          <option value="__new__">+ Mi nombre no está en la lista</option>
+        </select>
+        <div id="ucNewNameWrap" style="display:none;margin-top:8px;">
+          <input type="text" id="ucNewName" placeholder="Escribe tu nombre completo">
+        </div>
+      </div>
 
-    <div class="field" id="ucDeptDisplay" style="display:none;">
-      <label>Departamento</label>
-      <input type="text" id="ucDeptText" disabled>
-    </div>
+      <div class="field" id="ucDeptField" style="display:none;">
+        <label>Departamento</label>
+        <select id="ucDeptSelect">
+          <option value="">— Selecciona tu departamento —</option>
+        </select>
+      </div>
 
-    <div class="field">
-      <label>Describe el problema</label>
-      <textarea id="ucDescription" rows="4" placeholder="Explica lo que está pasando con detalle…"></textarea>
-    </div>
+      <div class="field" id="ucDeptDisplay" style="display:none;">
+        <label>Departamento</label>
+        <input type="text" id="ucDeptText" disabled>
+      </div>
 
-    <div class="field">
-      <label>¿A quién deseas que te atienda? (opcional)</label>
-      <select id="ucTechSelect">
-        <option value="">Sin preferencia</option>
-      </select>
-    </div>
+      <div class="field">
+        <label>Describe el problema</label>
+        <textarea id="ucDescription" rows="4" placeholder="Explica lo que está pasando con detalle…"></textarea>
+      </div>
 
-    <div class="btn-row">
-      <button class="btn" id="ucSubmitBtn" style="width:100%;">Enviar solicitud</button>
+      <div class="field">
+        <label>¿A quién deseas que te atienda? (opcional)</label>
+        <select id="ucTechSelect">
+          <option value="">Sin preferencia</option>
+        </select>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn" id="ucSubmitBtn" style="width:100%;">Enviar solicitud</button>
+      </div>
     </div>
   </div>
   <button class="admin-link" id="adminLinkBtn">Administrador</button>
@@ -207,34 +224,34 @@
 
 <!-- APP ADMIN -->
 <div id="appShell" style="display:none;">
+  <header class="inst-header">
+    <div class="logo-wrap">
+      <div class="logo-plate"><img class="logo-img" src="LOGO%20ST.png" alt="Gobierno de Sonora · Secretaría del Trabajo"></div>
+      <div class="module-tag">
+        <h1>Mesa de Ayuda <span class="sync-dot" id="syncDot"></span></h1>
+        <div class="sub">Bitácora de tickets &amp; productividad técnica</div>
+      </div>
+    </div>
+    <div class="right-controls">
+      <div class="clock">
+        <strong id="clockDate">&nbsp;</strong>
+        <span id="clockTime">&nbsp;</span>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn secondary" id="notifBtn" style="font-size:11px;padding:5px 12px;">🔔 Activar notificaciones</button>
+        <button class="btn secondary" id="logoutBtn" style="font-size:11px;padding:5px 12px;">Cerrar sesión</button>
+      </div>
+    </div>
+  </header>
+  <div class="inst-breadcrumb">🏠&nbsp; / &nbsp;Mesa de Ayuda&nbsp; / &nbsp;<span class="crumb current" id="breadcrumbCurrent">Tablero</span></div>
+  <nav class="tabs">
+    <button class="tab-btn active" data-view="dashboard">Tablero</button>
+    <button class="tab-btn" data-view="tickets">Tickets</button>
+    <button class="tab-btn" data-view="metrics">Productividad</button>
+    <button class="tab-btn" data-view="catalogs">Catálogos</button>
+  </nav>
+
   <div class="shell">
-    <header class="top">
-      <div class="brand">
-        <span class="mark">IT&middot;01</span>
-        <div>
-          <h1>Mesa de Soporte <span class="sync-dot" id="syncDot"></span></h1>
-          <div class="sub">Bitácora de tickets &amp; productividad técnica</div>
-        </div>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
-        <div class="clock">
-          <strong id="clockDate">&nbsp;</strong>
-          <span id="clockTime">&nbsp;</span>
-        </div>
-        <div style="display:flex;gap:8px;">
-          <button class="btn secondary" id="notifBtn" style="font-size:11px;padding:5px 12px;">🔔 Activar notificaciones</button>
-          <button class="btn secondary" id="logoutBtn" style="font-size:11px;padding:5px 12px;">Cerrar sesión</button>
-        </div>
-      </div>
-    </header>
-
-    <nav class="tabs">
-      <button class="tab-btn active" data-view="dashboard">Tablero</button>
-      <button class="tab-btn" data-view="tickets">Tickets</button>
-      <button class="tab-btn" data-view="metrics">Productividad</button>
-      <button class="tab-btn" data-view="catalogs">Catálogos</button>
-    </nav>
-
     <main>
       <section class="view active" id="view-dashboard">
         <h2 class="section-title"><span class="eyebrow">Resumen</span> Estado general</h2>
@@ -330,9 +347,7 @@
 
 const SB_URL = 'https://yvkycguwkchikrgbxyxa.supabase.co';
 const SB_KEY = 'sb_publishable_ewrWWuX-JGoMlTlxbVXr5A_oeRllP1j';
-const EMAILJS_SERVICE = 'service_5a8b4fb';
-const EMAILJS_TEMPLATE = 'template_1btjxkb';
-const EMAILJS_KEY = 'VjKO3g-lW8IT4qoc1';
+const POWER_AUTOMATE_URL = 'https://default7afc50c29f92488d9fcb52381b6414.1b.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/6a8d5fe01c3f4df397fefa0bc2d6652e/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=qIo4A9IRFXYBIBGdaEcnZozzovfj-7M4FYxLd03AVu0';
 const ADMIN_USER = 'Administrador';
 const ADMIN_PASS = 'S0p0rt3';
 
@@ -340,21 +355,16 @@ const hdr = {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'
 
 async function sendTicketEmail(ticket){
   try{
-    await fetch('https://api.emailjs.com/api/v1.0/email/send',{
+    await fetch(POWER_AUTOMATE_URL,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        service_id: EMAILJS_SERVICE,
-        template_id: EMAILJS_TEMPLATE,
-        user_id: EMAILJS_KEY,
-        template_params:{
-          ticket_id: ticket.id,
-          usuario: ticket.requester,
-          departamento: ticket.department,
-          descripcion: ticket.description,
-          colaborador: ticket.technician||'Sin asignar',
-          fecha: new Date(ticket.created_at).toLocaleString('es-MX',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})
-        }
+        ticket_id: ticket.id,
+        usuario: ticket.requester,
+        departamento: ticket.department,
+        descripcion: ticket.description,
+        colaborador: ticket.technician||'Sin asignar',
+        fecha: new Date(ticket.created_at).toLocaleString('es-MX',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})
       })
     });
   }catch(e){
@@ -430,6 +440,15 @@ function slugify(s){return(s||'').toLowerCase().trim().replace(/\s+/g,'-').repla
 function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2400);}
 function priorityWeight(p){return{Crítica:4,Alta:3,Media:2,Baja:1}[p]||0;}
+function pixelPeak(){
+  let s='<svg class="peak" width="128" height="24" viewBox="0 0 128 24" xmlns="http://www.w3.org/2000/svg">';
+  for(let i=0;i<9;i++){
+    const dx=i*14,delta=Math.abs(i-4)*4,y=2+delta;
+    const color=i%2===0?'var(--accent)':'var(--gold)';
+    s+=`<rect x="${dx}" y="${y}" width="8" height="8" fill="${color}" transform="rotate(45 ${dx+4} ${y+4})"></rect>`;
+  }
+  return s+'</svg>';
+}
 function nowLocalInputValue(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16);}
 function isProtectedName(name){return['sin asignar','sin especificar'].includes((name||'').toLowerCase().trim());}
 
@@ -518,7 +537,6 @@ async function submitUserTicket(){
     </div>`;
   document.getElementById('ucNewTicketBtn').addEventListener('click',()=>{
     document.getElementById('userCard').innerHTML=`
-      <span class="uc-mark">Soporte IT</span>
       <h2>Reportar un problema</h2>
       <div class="uc-sub">Completa el formulario y el equipo de informática atenderá tu solicitud.</div>
       <div class="field"><label>Tu nombre</label>
@@ -574,6 +592,7 @@ function tickClock(){
   document.getElementById('clockTime').textContent=d.toLocaleTimeString('es-MX');
 }
 
+const VIEW_LABELS={dashboard:'Tablero',tickets:'Tickets',metrics:'Productividad',catalogs:'Catálogos'};
 function setupTabs(){
   document.querySelectorAll('.tab-btn').forEach(btn=>{
     btn.addEventListener('click',()=>{
@@ -581,6 +600,8 @@ function setupTabs(){
       document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById('view-'+btn.dataset.view).classList.add('active');
+      const bc=document.getElementById('breadcrumbCurrent');
+      if(bc) bc.textContent=VIEW_LABELS[btn.dataset.view]||'';
       if(btn.dataset.view==='dashboard') renderDashboard();
       if(btn.dataset.view==='tickets') renderTicketsTable();
       if(btn.dataset.view==='metrics') renderMetrics();
@@ -604,7 +625,7 @@ function renderDashboard(){
     {num:TICKETS.length,lab:'Total histórico',cls:''},
     {num:closedToday.length,lab:'Resueltos hoy',cls:'ok'},
     {num:avg!==null?fmtHours(avg):'—',lab:'Tiempo prom. resolución',cls:''},
-  ].map(k=>`<div class="kpi ${k.cls}"><div class="num">${k.num}</div><div class="lab">${k.lab}</div></div>`).join('');
+  ].map(k=>`<div class="kpi ${k.cls}">${pixelPeak()}<div class="num">${k.num}</div><div class="lab">${k.lab}</div></div>`).join('');
   const sorted=open.slice().sort((a,b)=>priorityWeight(b.priority)-priorityWeight(a.priority));
   document.getElementById('dashOpenTable').innerHTML=sorted.slice(0,8).map(t=>`
     <tr onclick="window.__openTicket('${t.id}')">
@@ -682,10 +703,10 @@ function generateReport(){
   const now=new Date().toLocaleString('es-MX',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
   const rows=list.map(t=>`<tr><td>${escapeHtml(t.id)}</td><td>${escapeHtml(t.requester)}</td><td>${escapeHtml(t.department)}</td><td>${escapeHtml(t.priority)}</td><td>${escapeHtml(t.status)}</td><td>${fmtDateTime(t.created_at)}</td><td>${fmtDateTime(t.resolved_at)}</td><td>${t.resolved_at?fmtHours(hoursBetween(t.created_at,t.resolved_at)):'—'}</td></tr>`).join('');
   const html=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Reporte — ${name}</title><style>body{font-family:Arial,sans-serif;font-size:12px;padding:30px;}h1{font-size:18px;margin-bottom:2px;}.sub{color:#666;margin-bottom:18px;font-size:11px;}.kpis{display:flex;gap:30px;margin-bottom:20px;}.kpi .n{font-size:26px;font-weight:bold;line-height:1;}.kpi .l{font-size:10px;color:#666;text-transform:uppercase;}table{width:100%;border-collapse:collapse;font-size:11px;}th{background:#111;color:#fff;padding:6px 8px;text-align:left;font-size:10px;text-transform:uppercase;}td{padding:6px 8px;border-bottom:1px solid #ddd;}tr:nth-child(even) td{background:#f7f7f5;}.footer{margin-top:18px;font-size:10px;color:#888;}</style></head><body>
-  <h1>Reporte — ${escapeHtml(name)}</h1><div class="sub">Generado el ${now} | Mesa de Soporte IT</div>
+  <h1>Reporte — ${escapeHtml(name)}</h1><div class="sub">Generado el ${now} | Mesa de Ayuda · Secretaría del Trabajo</div>
   <div class="kpis"><div class="kpi"><div class="n">${list.length}</div><div class="l">Total asignados</div></div><div class="kpi"><div class="n">${resolved.length}</div><div class="l">Resueltos</div></div><div class="kpi"><div class="n">${list.length-resolved.length}</div><div class="l">Abiertos/en proceso</div></div><div class="kpi"><div class="n">${avg!==null?fmtHours(avg):'—'}</div><div class="l">Tiempo prom.</div></div></div>
   <table><thead><tr><th>Folio</th><th>Solicitante</th><th>Depto.</th><th>Prioridad</th><th>Estado</th><th>Solicitado</th><th>Resuelto</th><th>Tiempo</th></tr></thead><tbody>${rows||'<tr><td colspan="8" style="text-align:center;padding:20px;color:#999;">Sin tickets asignados</td></tr>'}</tbody></table>
-  <div class="footer">Mesa de Soporte IT — Reporte individual</div><script>window.print();<\/script></body></html>`;
+  <div class="footer">Mesa de Ayuda · Secretaría del Trabajo — Reporte individual</div><script>window.print();<\/script></body></html>`;
   const w=window.open('','_blank');w.document.write(html);w.document.close();
 }
 
@@ -946,7 +967,7 @@ function playBeep(){
 function showDesktopNotif(ticket){
   playBeep();
   if(notifPermission!=='granted') return;
-  const n=new Notification('Nuevo ticket — Mesa de Soporte IT',{
+  const n=new Notification('Nuevo ticket — Mesa de Ayuda',{
     body:`${ticket.id} · ${ticket.requester}\n${ticket.description.slice(0,80)}${ticket.description.length>80?'…':''}`,
     tag:ticket.id
   });
