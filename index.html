@@ -27,6 +27,8 @@
   .inst-header .module-tag h1{font-family:var(--sans);font-weight:700;font-size:22px;margin:0;color:#fff;letter-spacing:.01em;text-transform:uppercase;display:flex;align-items:center;}
   .inst-header .module-tag .sub{font-family:var(--sans);font-size:13px;color:rgba(255,255,255,.85);letter-spacing:.02em;margin-top:2px;}
   .inst-header .right-controls{display:flex;align-items:center;gap:16px;}
+  .inst-header .right-controls .btn.secondary{color:#fff;border-color:rgba(255,255,255,.6);}
+  .inst-header .right-controls .btn.secondary:hover{background:rgba(255,255,255,.12);}
   .clock{font-family:var(--sans);font-size:12px;color:#8a8378;text-align:right;}
   .clock strong{color:var(--ink);display:block;font-size:13px;}
   .inst-breadcrumb{background:#faf8f6;padding:9px 28px;font-family:var(--mono);font-size:11px;color:#8a8378;border-bottom:1px solid var(--line);letter-spacing:.02em;}
@@ -141,6 +143,7 @@
   .success-msg p{font-family:var(--mono);font-size:12px;color:#6b6358;margin:0 0 20px;}
   .admin-link{position:fixed;bottom:16px;right:20px;font-family:var(--mono);font-size:11px;color:#b9b2a3;background:none;border:none;cursor:pointer;text-decoration:underline;z-index:160;}
   .admin-link:hover{color:var(--ink);}
+  .signature-mark{position:fixed;bottom:4px;right:20px;font-family:var(--mono);font-size:9px;color:#d8d2c8;letter-spacing:.03em;z-index:160;pointer-events:none;}
   #loginOverlay{z-index:300;}
 </style>
 </head>
@@ -209,6 +212,7 @@
     </div>
   </div>
   <button class="admin-link" id="adminLinkBtn">Administrador</button>
+  <div class="signature-mark">Hecho por 34330</div>
 </div>
 
 <!-- LOGIN ADMIN (fuera del userScreen para evitar superposición) -->
@@ -349,7 +353,9 @@
 
 const SB_URL = 'https://yvkycguwkchikrgbxyxa.supabase.co';
 const SB_KEY = 'sb_publishable_ewrWWuX-JGoMlTlxbVXr5A_oeRllP1j';
-const POWER_AUTOMATE_URL = 'https://default7afc50c29f92488d9fcb52381b6414.1b.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/6a8d5fe01c3f4df397fefa0bc2d6652e/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=qIo4A9IRFXYBIBGdaEcnZozzovfj-7M4FYxLd03AVu0';
+const EMAILJS_SERVICE = 'service_iucb5sj';
+const EMAILJS_TEMPLATE = 'template_1btjxkb';
+const EMAILJS_KEY = 'VjKO3g-lW8IT4qoc1';
 const ADMIN_USER = 'Administrador';
 const ADMIN_PASS = 'S0p0rt3';
 
@@ -357,16 +363,21 @@ const hdr = {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'
 
 async function sendTicketEmail(ticket){
   try{
-    await fetch(POWER_AUTOMATE_URL,{
+    await fetch('https://api.emailjs.com/api/v1.0/email/send',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        ticket_id: ticket.id,
-        usuario: ticket.requester,
-        departamento: ticket.department,
-        descripcion: ticket.description,
-        colaborador: ticket.technician||'Sin asignar',
-        fecha: new Date(ticket.created_at).toLocaleString('es-MX',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})
+        service_id: EMAILJS_SERVICE,
+        template_id: EMAILJS_TEMPLATE,
+        user_id: EMAILJS_KEY,
+        template_params:{
+          ticket_id: ticket.id,
+          usuario: ticket.requester,
+          departamento: ticket.department,
+          descripcion: ticket.description,
+          colaborador: ticket.technician||'Sin asignar',
+          fecha: new Date(ticket.created_at).toLocaleString('es-MX',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})
+        }
       })
     });
   }catch(e){
