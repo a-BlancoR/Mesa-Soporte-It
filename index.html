@@ -17,9 +17,11 @@
   *{box-sizing:border-box;}
   body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.45;}
   .shell{max-width:1280px;margin:0 auto;padding:0 28px 80px;}
-  .inst-header{background:var(--accent);padding:0 28px 0 0;border-bottom:4px solid var(--accent);display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;}
+  .inst-header{background:var(--accent);padding:0 28px 0 0;border-bottom:4px solid var(--accent);display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;position:relative;}
+  .inst-header::before{content:"";position:absolute;inset:0;background-image:url('patron-fondo.png');background-repeat:repeat;background-size:220px auto;opacity:.16;pointer-events:none;}
+  .inst-header>*{position:relative;z-index:1;}
   .inst-header .logo-wrap{display:flex;align-items:center;gap:20px;}
-  .inst-header .logo-plate{background:#fff;padding:6px 14px;display:flex;align-items:center;}
+  .inst-header .logo-plate{padding:14px 0 14px 14px;display:flex;align-items:center;}
   .inst-header .logo-img{height:118px;width:auto;display:block;}
   .inst-header .module-tag{font-family:var(--sans);border-left:2px solid rgba(255,255,255,.3);padding-left:20px;}
   .inst-header .module-tag h1{font-family:var(--sans);font-weight:700;font-size:22px;margin:0;color:#fff;letter-spacing:.01em;text-transform:uppercase;display:flex;align-items:center;}
@@ -153,7 +155,7 @@
 <div id="userScreen" style="display:none;">
   <header class="inst-header">
     <div class="logo-wrap">
-      <div class="logo-plate"><img class="logo-img" src="LOGO%20ST.png" alt="Gobierno de Sonora · Secretaría del Trabajo"></div>
+      <div class="logo-plate"><img class="logo-img" src="LOGO%20ST%20Blanco.png" alt="Gobierno de Sonora · Secretaría del Trabajo"></div>
       <div class="module-tag">
         <h1>Mesa de Ayuda</h1>
         <div class="sub">Soporte técnico · Secretaría del Trabajo</div>
@@ -226,7 +228,7 @@
 <div id="appShell" style="display:none;">
   <header class="inst-header">
     <div class="logo-wrap">
-      <div class="logo-plate"><img class="logo-img" src="LOGO%20ST.png" alt="Gobierno de Sonora · Secretaría del Trabajo"></div>
+      <div class="logo-plate"><img class="logo-img" src="LOGO%20ST%20Blanco.png" alt="Gobierno de Sonora · Secretaría del Trabajo"></div>
       <div class="module-tag">
         <h1>Mesa de Ayuda <span class="sync-dot" id="syncDot"></span></h1>
         <div class="sub">Bitácora de tickets &amp; productividad técnica</div>
