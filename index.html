@@ -330,10 +330,37 @@
 
 const SB_URL = 'https://yvkycguwkchikrgbxyxa.supabase.co';
 const SB_KEY = 'sb_publishable_ewrWWuX-JGoMlTlxbVXr5A_oeRllP1j';
+const EMAILJS_SERVICE = 'service_5a8b4fb';
+const EMAILJS_TEMPLATE = 'template_1btjxkb';
+const EMAILJS_KEY = 'VjKO3g-lW8IT4qoc1';
 const ADMIN_USER = 'Administrador';
 const ADMIN_PASS = 'S0p0rt3';
 
 const hdr = {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
+
+async function sendTicketEmail(ticket){
+  try{
+    await fetch('https://api.emailjs.com/api/v1.0/email/send',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        service_id: EMAILJS_SERVICE,
+        template_id: EMAILJS_TEMPLATE,
+        user_id: EMAILJS_KEY,
+        template_params:{
+          ticket_id: ticket.id,
+          usuario: ticket.requester,
+          departamento: ticket.department,
+          descripcion: ticket.description,
+          colaborador: ticket.technician||'Sin asignar',
+          fecha: new Date(ticket.created_at).toLocaleString('es-MX',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})
+        }
+      })
+    });
+  }catch(e){
+    console.error('Error al enviar correo:',e);
+  }
+}
 
 function buildQuery(params){
   if(!params) return '';
@@ -480,6 +507,7 @@ async function submitUserTicket(){
   };
   await sbPost('tickets',ticket);
   TICKETS.unshift(ticket);
+  sendTicketEmail(ticket);
 
   document.getElementById('userCard').innerHTML=`
     <div class="success-msg">
@@ -725,6 +753,7 @@ async function saveNewTicket(){
   await sbPost('tickets',ticket);
   TICKETS.unshift(ticket);
   setSyncDot('ok');
+  sendTicketEmail(ticket);
   closeModal();
   showToast(`Ticket ${id} registrado`);
   refreshAllViews();
