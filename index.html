@@ -33,9 +33,33 @@
   .clock strong{color:var(--ink);display:block;font-size:13px;}
   .inst-breadcrumb{background:#faf8f6;padding:9px 28px;font-family:var(--mono);font-size:11px;color:#8a8378;border-bottom:1px solid var(--line);letter-spacing:.02em;}
   .inst-breadcrumb .crumb.current{color:var(--accent);font-weight:700;}
-  nav.tabs{display:flex;gap:2px;padding:0 28px;background:#fff;border-bottom:1px solid var(--line);}
-  nav.tabs button{font-family:var(--sans);font-size:12.5px;letter-spacing:.02em;text-transform:uppercase;background:none;border:none;cursor:pointer;padding:13px 18px;color:#666;position:relative;top:1px;font-weight:500;}
+  .crumb-home{font-family:inherit;font-size:inherit;background:none;border:none;padding:0;cursor:pointer;color:inherit;}
+  .crumb-home:hover{opacity:.65;}
+  nav.tabs{display:flex;gap:2px;padding:0 28px;background:#fff;border-bottom:1px solid var(--line);overflow-x:auto;}
+  nav.tabs button{font-family:var(--sans);font-size:12.5px;letter-spacing:.02em;text-transform:uppercase;background:none;border:none;cursor:pointer;padding:13px 18px;color:#666;position:relative;top:1px;font-weight:500;white-space:nowrap;}
   nav.tabs button.active{color:var(--accent);border-bottom:3px solid var(--accent);font-weight:700;}
+  @media(max-width:640px){
+    .shell{padding:0 14px 50px;}
+    .inst-header{padding-right:14px;gap:10px;}
+    .inst-header .logo-plate{padding:8px 0 8px 14px;}
+    .inst-header .logo-img{height:44px;}
+    .inst-header .module-tag{padding-left:10px;border-left-width:1px;}
+    .inst-header .module-tag h1{font-size:14px;}
+    .inst-header .module-tag .sub{font-size:9.5px;}
+    .inst-header .right-controls{width:100%;justify-content:space-between;padding:0 14px 10px;gap:8px;}
+    .inst-header .right-controls .clock{display:none;}
+    .inst-breadcrumb{padding:8px 14px;font-size:10px;}
+    nav.tabs{padding:0 14px;}
+    nav.tabs button{padding:11px 12px;font-size:11.5px;}
+    .user-card{padding:24px 18px 22px;}
+    .user-card-wrap{padding:14px;}
+    .user-card h2{font-size:20px;}
+    .kpi-row{grid-template-columns:repeat(2,1fr);gap:10px;}
+    .kpi{padding:12px 14px;}
+    .kpi .num{font-size:24px;}
+    .toolbar{flex-direction:column;align-items:stretch;}
+    .toolbar .field{min-width:0;}
+  }
   nav.tabs button:hover{color:var(--accent);}
   main{padding-top:26px;}
   .view{display:none;}
@@ -165,7 +189,7 @@
       </div>
     </div>
   </header>
-  <div class="inst-breadcrumb">🏠&nbsp; / &nbsp;Mesa de Ayuda&nbsp; / &nbsp;<span class="crumb current">Reportar un problema</span></div>
+  <div class="inst-breadcrumb"><button class="crumb-home" id="ucHomeBtn" title="Volver al inicio">🏠</button>&nbsp; / &nbsp;Mesa de Ayuda&nbsp; / &nbsp;<span class="crumb current">Reportar un problema</span></div>
   <div class="user-card-wrap">
     <div class="user-card" id="userCard">
       <h2>Reportar un problema</h2>
@@ -612,25 +636,27 @@ async function submitUserTicket(){
       <p>Tu folio es <strong>${id}</strong>.<br>El equipo de informática atenderá tu solicitud a la brevedad.</p>
       <button class="btn" id="ucNewTicketBtn" style="margin:0 auto;">Reportar otro problema</button>
     </div>`;
-  document.getElementById('ucNewTicketBtn').addEventListener('click',()=>{
-    document.getElementById('userCard').innerHTML=`
-      <h2>Reportar un problema</h2>
-      <div class="uc-sub">Completa el formulario y el equipo de informática atenderá tu solicitud.</div>
-      <div class="field"><label>Tu nombre</label>
-        <select id="ucUserSelect"><option value="">— Selecciona tu nombre —</option><option value="__new__">+ Mi nombre no está en la lista</option></select>
-        <div id="ucNewNameWrap" style="display:none;margin-top:8px;"><input type="text" id="ucNewName" placeholder="Escribe tu nombre completo"></div>
-      </div>
-      <div class="field" id="ucDeptField" style="display:none;"><label>Departamento</label>
-        <select id="ucDeptSelect"><option value="">— Selecciona tu departamento —</option></select>
-        <div id="ucNewDeptWrap" style="display:none;margin-top:8px;"><input type="text" id="ucNewDept" placeholder="Escribe el nombre de tu departamento"></div>
-      </div>
-      <div class="field" id="ucDeptDisplay" style="display:none;"><label>Departamento</label><input type="text" id="ucDeptText" disabled></div>
-      <div class="field"><label>Describe el problema</label><textarea id="ucDescription" rows="4" placeholder="Explica lo que está pasando con detalle…"></textarea></div>
-      <div class="field"><label>Personal de Informática asignado (opcional)</label><select id="ucTechSelect"><option value="">Sin preferencia</option></select></div>
-      <div class="btn-row"><button class="btn" id="ucSubmitBtn" style="width:100%;">Enviar solicitud</button></div>`;
-    populateUserScreen();
-    document.getElementById('ucSubmitBtn').addEventListener('click',submitUserTicket);
-  });
+  document.getElementById('ucNewTicketBtn').addEventListener('click',resetUserForm);
+}
+
+function resetUserForm(){
+  document.getElementById('userCard').innerHTML=`
+    <h2>Reportar un problema</h2>
+    <div class="uc-sub">Completa el formulario y el equipo de informática atenderá tu solicitud.</div>
+    <div class="field"><label>Tu nombre</label>
+      <select id="ucUserSelect"><option value="">— Selecciona tu nombre —</option><option value="__new__">+ Mi nombre no está en la lista</option></select>
+      <div id="ucNewNameWrap" style="display:none;margin-top:8px;"><input type="text" id="ucNewName" placeholder="Escribe tu nombre completo"></div>
+    </div>
+    <div class="field" id="ucDeptField" style="display:none;"><label>Departamento</label>
+      <select id="ucDeptSelect"><option value="">— Selecciona tu departamento —</option></select>
+      <div id="ucNewDeptWrap" style="display:none;margin-top:8px;"><input type="text" id="ucNewDept" placeholder="Escribe el nombre de tu departamento"></div>
+    </div>
+    <div class="field" id="ucDeptDisplay" style="display:none;"><label>Departamento</label><input type="text" id="ucDeptText" disabled></div>
+    <div class="field"><label>Describe el problema</label><textarea id="ucDescription" rows="4" placeholder="Explica lo que está pasando con detalle…"></textarea></div>
+    <div class="field"><label>Personal de Informática asignado (opcional)</label><select id="ucTechSelect"><option value="">Sin preferencia</option></select></div>
+    <div class="btn-row"><button class="btn" id="ucSubmitBtn" style="width:100%;">Enviar solicitud</button></div>`;
+  populateUserScreen();
+  document.getElementById('ucSubmitBtn').addEventListener('click',submitUserTicket);
 }
 
 /* ---- LOGIN ADMIN ---- */
@@ -1136,6 +1162,7 @@ async function init(){
 
   // Eventos usuario
   document.getElementById('ucSubmitBtn').addEventListener('click',submitUserTicket);
+  document.getElementById('ucHomeBtn').addEventListener('click',resetUserForm);
 
   // Eventos admin shell
   setupTabs();setupTicketTableEvents();setupCatalogEvents();
