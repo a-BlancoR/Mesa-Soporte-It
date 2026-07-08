@@ -1171,14 +1171,21 @@ async function init(){
   document.getElementById('ticketOverlay').addEventListener('click',e=>{if(e.target.id==='ticketOverlay') closeModal();});
   document.addEventListener('keydown',e=>{if(e.key==='Escape') closeModal();});
   document.getElementById('logoutBtn').addEventListener('click',()=>{isAdmin=false;SESSION=null;TICKETS=[];showUserScreen();});
+  const notifSupported=typeof Notification!=='undefined';
   document.getElementById('notifBtn').addEventListener('click',()=>{
+    if(!notifSupported){showToast('Tu navegador no soporta notificaciones de escritorio.');return;}
     Notification.requestPermission().then(p=>{
       notifPermission=p;
       if(p==='granted'){document.getElementById('notifBtn').textContent='🔔 Notificaciones activas';document.getElementById('notifBtn').disabled=true;}
       else showToast('Permiso denegado. Actívalo en la configuración del navegador.');
     });
   });
-  if(Notification.permission==='granted'){notifPermission='granted';document.getElementById('notifBtn').textContent='🔔 Notificaciones activas';document.getElementById('notifBtn').disabled=true;}
+  if(!notifSupported){
+    const nb=document.getElementById('notifBtn');
+    nb.textContent='🔕 Notificaciones no disponibles';nb.disabled=true;
+  } else if(Notification.permission==='granted'){
+    notifPermission='granted';document.getElementById('notifBtn').textContent='🔔 Notificaciones activas';document.getElementById('notifBtn').disabled=true;
+  }
 
   tickClock();setInterval(tickClock,1000);
   showUserScreen();
