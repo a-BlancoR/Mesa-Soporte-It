@@ -187,6 +187,9 @@
         <select id="ucDeptSelect">
           <option value="">— Selecciona tu departamento —</option>
         </select>
+        <div id="ucNewDeptWrap" style="display:none;margin-top:8px;">
+          <input type="text" id="ucNewDept" placeholder="Escribe el nombre de tu departamento">
+        </div>
       </div>
 
       <div class="field" id="ucDeptDisplay" style="display:none;">
@@ -492,6 +495,14 @@ function fmtHours(h){
   return (h/(WORK_END_HOUR-WORK_START_HOUR)).toFixed(1)+' días hábiles';
 }
 function slugify(s){return(s||'').toLowerCase().trim().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');}
+const TITLE_CASE_STOPWORDS=new Set(['de','del','la','las','el','los','y','o','e','u','en','a','con','para','por','un','una','unos','unas','al']);
+function toTitleCase(s){
+  return (s||'').trim().split(/\s+/).map((word,i)=>{
+    const lower=word.toLowerCase();
+    if(i>0&&TITLE_CASE_STOPWORDS.has(lower)) return lower;
+    return lower.charAt(0).toUpperCase()+lower.slice(1);
+  }).join(' ');
+}
 function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2400);}
 function priorityWeight(p){return{Crítica:4,Alta:3,Media:2,Baja:1}[p]||0;}
@@ -527,7 +538,11 @@ function populateUserScreen(){
 
   const deptSel=document.getElementById('ucDeptSelect');
   deptSel.innerHTML='<option value="">— Selecciona tu departamento —</option>'+
-    DEPTS.filter(d=>!isProtectedName(d.name)).map(d=>`<option>${escapeHtml(d.name)}</option>`).join('');
+    DEPTS.filter(d=>!isProtectedName(d.name)).map(d=>`<option>${escapeHtml(d.name)}</option>`).join('')+
+    '<option value="__new__">+ Agregar mi departamento</option>';
+  deptSel.onchange=()=>{
+    document.getElementById('ucNewDeptWrap').style.display=deptSel.value==='__new__'?'block':'none';
+  };
 
   sel.onchange=()=>{
     const v=sel.value;
@@ -554,10 +569,18 @@ async function submitUserTicket(){
   const sel=document.getElementById('ucUserSelect');
   let requester='',department='';
   if(sel.value==='__new__'){
-    requester=document.getElementById('ucNewName').value.trim();
+    requester=toTitleCase(document.getElementById('ucNewName').value.trim());
     department=document.getElementById('ucDeptSelect').value;
     if(!requester){showToast('Escribe tu nombre completo');return;}
     if(!department){showToast('Selecciona tu departamento');return;}
+    if(department==='__new__'){
+      department=toTitleCase(document.getElementById('ucNewDept').value.trim());
+      if(!department){showToast('Escribe el nombre de tu departamento');return;}
+      if(!DEPTS.some(d=>d.name.toLowerCase()===department.toLowerCase())){
+        await sbPost('departments',{name:department});
+        DEPTS.push({name:department});
+      }
+    }
     if(!REQUESTERS.some(r=>r.name.toLowerCase()===requester.toLowerCase())){
       await sbPost('requesters',{name:requester,department});
       REQUESTERS.push({name:requester,department});
@@ -599,6 +622,7 @@ async function submitUserTicket(){
       </div>
       <div class="field" id="ucDeptField" style="display:none;"><label>Departamento</label>
         <select id="ucDeptSelect"><option value="">— Selecciona tu departamento —</option></select>
+        <div id="ucNewDeptWrap" style="display:none;margin-top:8px;"><input type="text" id="ucNewDept" placeholder="Escribe el nombre de tu departamento"></div>
       </div>
       <div class="field" id="ucDeptDisplay" style="display:none;"><label>Departamento</label><input type="text" id="ucDeptText" disabled></div>
       <div class="field"><label>Describe el problema</label><textarea id="ucDescription" rows="4" placeholder="Explica lo que está pasando con detalle…"></textarea></div>
@@ -838,7 +862,7 @@ async function saveNewTicket(){
   const sel=document.getElementById('reqSelect');
   let requester='',department='';
   if(sel.value==='__new__'){
-    requester=document.getElementById('newReqName').value.trim();
+    requester=toTitleCase(document.getElementById('newReqName').value.trim());
     department=document.getElementById('newReqDept').value;
     if(!requester){showToast('Escribe el nombre del usuario nuevo');return;}
     if(!department){showToast('Selecciona el departamento');return;}
@@ -1010,18 +1034,18 @@ function renderUserList(){
   });
 }
 function setupCatalogEvents(){
-  async function addItem(inputId,list,table,makeObj,refresh){
+  async function addItem(inputId,list,table,makeObj,refresh,transform=n=>n){
     const input=document.getElementById(inputId);
-    const name=input.value.trim();
+    const name=transform(input.value.trim());
     if(!name){showToast('Escribe un nombre');return;}
     if(list.some(i=>(i.name||i).toLowerCase()===name.toLowerCase())){showToast('Ya existe');return;}
     setSyncDot('busy');await sbPost(table,makeObj(name));list.push(makeObj(name));setSyncDot('ok');
     input.value='';refresh();showToast(`"${name}" agregado`);
   }
   document.getElementById('addTechBtn').addEventListener('click',()=>addItem('newTechInput',TECHS,'technicians',n=>({name:n}),()=>renderCatalogs()));
-  document.getElementById('addDeptBtn').addEventListener('click',()=>addItem('newDeptInput',DEPTS,'departments',n=>({name:n}),()=>renderCatalogs()));
+  document.getElementById('addDeptBtn').addEventListener('click',()=>addItem('newDeptInput',DEPTS,'departments',n=>({name:n}),()=>renderCatalogs(),toTitleCase));
   document.getElementById('addUserBtn').addEventListener('click',async()=>{
-    const name=document.getElementById('newUserInput').value.trim();
+    const name=toTitleCase(document.getElementById('newUserInput').value.trim());
     const dept=document.getElementById('newUserDept').value;
     if(!name){showToast('Escribe el nombre del usuario');return;}
     if(!dept){showToast('Selecciona un departamento');return;}
