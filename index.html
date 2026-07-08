@@ -227,7 +227,7 @@
       </div>
 
       <div class="field">
-        <label>¿A quién deseas que te atienda? (opcional)</label>
+        <label>Personal asignado sugerido (opcional)</label>
         <select id="ucTechSelect">
           <option value="">Sin preferencia</option>
         </select>
@@ -653,7 +653,7 @@ function resetUserForm(){
     </div>
     <div class="field" id="ucDeptDisplay" style="display:none;"><label>Departamento</label><input type="text" id="ucDeptText" disabled></div>
     <div class="field"><label>Describe el problema</label><textarea id="ucDescription" rows="4" placeholder="Explica lo que está pasando con detalle…"></textarea></div>
-    <div class="field"><label>Personal de Informática asignado (opcional)</label><select id="ucTechSelect"><option value="">Sin preferencia</option></select></div>
+    <div class="field"><label>Personal asignado sugerido (opcional)</label><select id="ucTechSelect"><option value="">Sin preferencia</option></select></div>
     <div class="btn-row"><button class="btn" id="ucSubmitBtn" style="width:100%;">Enviar solicitud</button></div>`;
   populateUserScreen();
   document.getElementById('ucSubmitBtn').addEventListener('click',submitUserTicket);
