@@ -1124,6 +1124,11 @@ function showDesktopNotif(ticket){
     body:`${ticket.id} · ${ticket.requester}\n${ticket.description.slice(0,80)}${ticket.description.length>80?'…':''}`,
     tag:ticket.id
   });
+  n.onclick=()=>{
+    window.focus();
+    if(isAdmin){goToView('tickets');window.__openTicket(ticket.id);}
+    n.close();
+  };
   setTimeout(()=>n.close(),8000);
 }
 
