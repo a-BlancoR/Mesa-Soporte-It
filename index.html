@@ -292,7 +292,7 @@
         <div class="col3">
           <div class="panel" style="grid-column:span 2;">
             <h2 class="section-title" style="font-size:15px;">Tickets abiertos &amp; en proceso</h2>
-            <table><thead><tr><th>Folio</th><th>Solicitante</th><th>Prioridad</th><th>Estado</th><th>Colaborador</th></tr></thead>
+            <table><thead><tr><th>Folio</th><th>Solicitante</th><th>Depto.</th><th>Prioridad</th><th>Estado</th><th>Colaborador</th></tr></thead>
             <tbody id="dashOpenTable"></tbody></table>
           </div>
           <div class="panel">
@@ -782,10 +782,11 @@ function renderDashboard(){
   document.getElementById('dashOpenTable').innerHTML=sorted.slice(0,8).map(t=>`
     <tr onclick="window.__openTicket('${t.id}')">
       <td class="ticket-id">${t.id}</td><td>${escapeHtml(t.requester)}</td>
+      <td>${escapeHtml(t.department)}</td>
       <td><span class="pill pr-${slugify(t.priority)}">${t.priority}</span></td>
       <td><span class="pill st-${slugify(t.status)}">${t.status}</span></td>
       <td>${escapeHtml(t.technician||'Sin asignar')}</td>
-    </tr>`).join('')||`<tr class="empty-row"><td colspan="5">No hay tickets abiertos.</td></tr>`;
+    </tr>`).join('')||`<tr class="empty-row"><td colspan="6">No hay tickets abiertos.</td></tr>`;
 }
 
 /* ---- TICKETS TABLE ---- */
