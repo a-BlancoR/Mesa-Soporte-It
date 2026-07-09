@@ -714,7 +714,7 @@ function updateIdentityBtnLabel(){
 }
 function openIdentityPicker(){
   const sel=document.getElementById('identitySelect');
-  sel.innerHTML='<option value="">Todos los tickets (sin filtrar)</option>'+
+  sel.innerHTML='<option value="">— Selecciona tu nombre —</option>'+
     TECHS.filter(t=>!isProtectedName(t.name)).map(t=>`<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`).join('');
   sel.value=MY_IDENTITY;
   document.getElementById('identityOverlay').classList.add('active');
