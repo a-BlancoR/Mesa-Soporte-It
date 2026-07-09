@@ -169,6 +169,7 @@
   .admin-link:hover{color:var(--ink);}
   .signature-mark{position:fixed;bottom:4px;right:20px;font-family:var(--mono);font-size:9px;color:#d8d2c8;letter-spacing:.03em;z-index:160;pointer-events:none;}
   #loginOverlay{z-index:300;}
+  #identityOverlay{z-index:300;}
 </style>
 </head>
 <body>
@@ -255,6 +256,22 @@
   </div>
 </div>
 
+<!-- SELECCIÓN DE IDENTIDAD (para filtrar notificaciones por colaborador) -->
+<div class="overlay" id="identityOverlay">
+  <div class="modal" style="max-width:380px;">
+    <button class="modal-close" id="identityCloseBtn">&times;</button>
+    <h3>¿Quién eres?</h3>
+    <div class="modal-sub">Así te notificamos solo lo que te corresponde</div>
+    <div class="field">
+      <label>Tu nombre</label>
+      <select id="identitySelect">
+        <option value="">Todos los tickets (sin filtrar)</option>
+      </select>
+    </div>
+    <button class="btn" id="identitySaveBtn" style="width:100%;">Guardar</button>
+  </div>
+</div>
+
 <!-- APP ADMIN -->
 <div id="appShell" style="display:none;">
   <header class="inst-header">
@@ -271,6 +288,7 @@
         <span id="clockTime">&nbsp;</span>
       </div>
       <div style="display:flex;gap:8px;">
+        <button class="btn secondary" id="identityBtn" style="font-size:11px;padding:5px 12px;">👤 Elegir quién eres</button>
         <button class="btn secondary" id="notifBtn" style="font-size:11px;padding:5px 12px;">🔔 Activar notificaciones</button>
         <button class="btn secondary" id="logoutBtn" style="font-size:11px;padding:5px 12px;">Cerrar sesión</button>
       </div>
@@ -470,6 +488,7 @@ async function nextId(){
 
 let TICKETS=[],TECHS=[],DEPTS=[],REQUESTERS=[];
 let isAdmin=false;
+let MY_IDENTITY=localStorage.getItem('mesadeayuda_identity')||'';
 
 function setSyncDot(state){
   const d=document.getElementById('syncDot');
@@ -688,6 +707,27 @@ function showLogin(){
 }
 function hideLogin(){document.getElementById('loginOverlay').classList.remove('active');}
 
+/* ---- IDENTIDAD (para filtrar notificaciones por colaborador) ---- */
+function updateIdentityBtnLabel(){
+  const btn=document.getElementById('identityBtn');
+  btn.textContent=MY_IDENTITY?`👤 ${MY_IDENTITY}`:'👤 Elegir quién eres';
+}
+function openIdentityPicker(){
+  const sel=document.getElementById('identitySelect');
+  sel.innerHTML='<option value="">Todos los tickets (sin filtrar)</option>'+
+    TECHS.filter(t=>!isProtectedName(t.name)).map(t=>`<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`).join('');
+  sel.value=MY_IDENTITY;
+  document.getElementById('identityOverlay').classList.add('active');
+}
+function hideIdentityPicker(){document.getElementById('identityOverlay').classList.remove('active');}
+function saveIdentity(){
+  MY_IDENTITY=document.getElementById('identitySelect').value;
+  localStorage.setItem('mesadeayuda_identity',MY_IDENTITY);
+  updateIdentityBtnLabel();
+  hideIdentityPicker();
+  showToast(MY_IDENTITY?`Notificaciones filtradas para ${MY_IDENTITY}`:'Recibirás todas las notificaciones');
+}
+
 async function tryLogin(){
   const email=document.getElementById('loginUser').value.trim();
   const pass=document.getElementById('loginPass').value;
@@ -735,6 +775,8 @@ async function showAdminShell(){
   }
   setSyncDot('ok');
   refreshAllViews();
+  updateIdentityBtnLabel();
+  if(!MY_IDENTITY) openIdentityPicker();
   startPolling();
 }
 
@@ -1156,7 +1198,7 @@ function startPolling(){
         const newTickets=t.filter(x=>!knownIds.has(x.id));
         TICKETS=t;
         refreshAllViews();
-        newTickets.forEach(tk=>showDesktopNotif(tk));
+        newTickets.filter(tk=>!MY_IDENTITY||!tk.technician||tk.technician===MY_IDENTITY).forEach(tk=>showDesktopNotif(tk));
       }
       setSyncDot('ok');
     }catch(e){
@@ -1199,6 +1241,10 @@ async function init(){
   document.getElementById('ticketOverlay').addEventListener('click',e=>{if(e.target.id==='ticketOverlay') closeModal();});
   document.addEventListener('keydown',e=>{if(e.key==='Escape') closeModal();});
   document.getElementById('logoutBtn').addEventListener('click',()=>{isAdmin=false;SESSION=null;TICKETS=[];showUserScreen();});
+  document.getElementById('identityBtn').addEventListener('click',openIdentityPicker);
+  document.getElementById('identityCloseBtn').addEventListener('click',hideIdentityPicker);
+  document.getElementById('identitySaveBtn').addEventListener('click',saveIdentity);
+  document.getElementById('identityOverlay').addEventListener('click',e=>{if(e.target.id==='identityOverlay') hideIdentityPicker();});
   const notifSupported=typeof Notification!=='undefined';
   document.getElementById('notifBtn').addEventListener('click',()=>{
     if(!notifSupported){showToast('Tu navegador no soporta notificaciones de escritorio.');return;}
