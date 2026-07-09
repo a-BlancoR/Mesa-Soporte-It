@@ -384,7 +384,26 @@ const EMAILJS_SERVICE = 'service_iucb5sj';
 const EMAILJS_TEMPLATE = 'template_1btjxkb';
 const EMAILJS_KEY = 'VjKO3g-lW8IT4qoc1';
 
-let SESSION=null; // {access_token} set on successful Supabase Auth login, held only in memory
+let SESSION=null; // {access_token,refresh_token,expires_at} set on successful Supabase Auth login, held only in memory
+async function refreshSession(){
+  if(!SESSION||!SESSION.refresh_token) return false;
+  try{
+    const r=await fetch(`${SB_URL}/auth/v1/token?grant_type=refresh_token`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SB_KEY},
+      body:JSON.stringify({refresh_token:SESSION.refresh_token})
+    });
+    const data=await r.json();
+    if(!r.ok||!data.access_token) return false;
+    SESSION={access_token:data.access_token,refresh_token:data.refresh_token,expires_at:Date.now()+(data.expires_in||3600)*1000};
+    return true;
+  }catch(e){ return false; }
+}
+async function ensureSession(){
+  if(!SESSION) return false;
+  if(Date.now()>SESSION.expires_at-120000) return await refreshSession();
+  return true;
+}
 function getHeaders(){
   const token=SESSION&&SESSION.access_token?SESSION.access_token:SB_KEY;
   return {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+token};
@@ -687,7 +706,7 @@ async function tryLogin(){
       errBox.textContent='Usuario o contraseña incorrectos.';
       return;
     }
-    SESSION={access_token:data.access_token};
+    SESSION={access_token:data.access_token,refresh_token:data.refresh_token,expires_at:Date.now()+(data.expires_in||3600)*1000};
     hideLogin();
     await showAdminShell();
   }catch(e){
@@ -1117,6 +1136,15 @@ function startPolling(){
       const[tc,d,r]=await Promise.all([sbGet('technicians'),sbGet('departments'),sbGet('requesters')]);
       TECHS=tc;DEPTS=d;REQUESTERS=r;
       if(isAdmin){
+        const ok=await ensureSession();
+        if(!ok){
+          isAdmin=false;SESSION=null;TICKETS=[];
+          document.getElementById('appShell').style.display='none';
+          showUserScreen();
+          showToast('Tu sesión expiró. Inicia sesión de nuevo.');
+          setSyncDot('err');
+          return;
+        }
         const t=await sbGet('tickets');
         const knownIds=new Set(TICKETS.map(x=>x.id));
         const newTickets=t.filter(x=>!knownIds.has(x.id));
@@ -1127,12 +1155,6 @@ function startPolling(){
       setSyncDot('ok');
     }catch(e){
       setSyncDot('err');
-      if(isAdmin){
-        isAdmin=false;SESSION=null;TICKETS=[];
-        document.getElementById('appShell').style.display='none';
-        showUserScreen();
-        showToast('Sesión expirada. Inicia sesión de nuevo.');
-      }
     }
   },30000);
 }
