@@ -351,7 +351,10 @@
       </section>
 
       <section class="view" id="view-metrics">
-        <h2 class="section-title"><span class="eyebrow">Desempeño</span> Productividad por colaborador</h2>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+          <h2 class="section-title" style="margin:0;"><span class="eyebrow">Desempeño</span> Productividad por colaborador</h2>
+          <button class="btn secondary" id="teamReportBtn">&#128202; Reporte comparativo</button>
+        </div>
         <div id="metricsContainer"></div>
       </section>
 
@@ -886,6 +889,7 @@ function setupTicketTableEvents(){
     });
   });
   document.getElementById('reportBtn').addEventListener('click',generateReport);
+  document.getElementById('teamReportBtn').addEventListener('click',generateTeamReport);
 }
 
 function generateReport(){
@@ -902,6 +906,36 @@ function generateReport(){
   <div class="kpis"><div class="kpi"><div class="n">${list.length}</div><div class="l">Total asignados</div></div><div class="kpi"><div class="n">${resolved.length}</div><div class="l">Resueltos</div></div><div class="kpi"><div class="n">${list.length-resolved.length}</div><div class="l">Abiertos/en proceso</div></div><div class="kpi"><div class="n">${avg!==null?fmtHours(avg):'—'}</div><div class="l">Tiempo prom.</div></div></div>
   <table><thead><tr><th>Folio</th><th>Solicitante</th><th>Depto.</th><th>Prioridad</th><th>Estado</th><th>Solicitado</th><th>Resuelto</th><th>Tiempo</th></tr></thead><tbody>${rows||'<tr><td colspan="8" style="text-align:center;padding:20px;color:#999;">Sin tickets asignados</td></tr>'}</tbody></table>
   <div class="footer">Mesa de Ayuda · Secretaría del Trabajo — Reporte individual</div><script>window.print();<\/script></body></html>`;
+  const w=window.open('','_blank');w.document.write(html);w.document.close();
+}
+
+function generateTeamReport(){
+  const real=TECHS.filter(t=>!isProtectedName(t.name));
+  const now=new Date().toLocaleString('es-MX',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const rows=real.map(({name})=>{
+    const own=TICKETS.filter(t=>t.technician===name);
+    const resolved=own.filter(t=>t.resolved_at);
+    const times=resolved.map(t=>hoursBetween(t.created_at,t.resolved_at)).filter(h=>h!==null);
+    const avg=times.length?times.reduce((a,b)=>a+b,0)/times.length:null;
+    const crit=own.filter(t=>t.priority==='Crítica').length;
+    return {name,total:own.length,resolved:resolved.length,open:own.length-resolved.length,avg,crit};
+  }).sort((a,b)=>b.resolved-a.resolved);
+  const teamTotal={
+    total:rows.reduce((s,r)=>s+r.total,0),
+    resolved:rows.reduce((s,r)=>s+r.resolved,0),
+    open:rows.reduce((s,r)=>s+r.open,0),
+    crit:rows.reduce((s,r)=>s+r.crit,0)
+  };
+  const allTimes=TICKETS.filter(t=>real.some(r=>r.name===t.technician)&&t.resolved_at).map(t=>hoursBetween(t.created_at,t.resolved_at)).filter(h=>h!==null);
+  const teamAvg=allTimes.length?allTimes.reduce((a,b)=>a+b,0)/allTimes.length:null;
+  const bodyRows=rows.map(r=>`<tr><td>${escapeHtml(r.name)}</td><td>${r.total}</td><td>${r.resolved}</td><td>${r.open}</td><td>${r.avg!==null?fmtHours(r.avg):'—'}</td><td>${r.crit}</td></tr>`).join('');
+  const html=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Reporte comparativo — Mesa de Ayuda</title><style>body{font-family:Arial,sans-serif;font-size:12px;padding:30px;}h1{font-size:18px;margin-bottom:2px;}.sub{color:#666;margin-bottom:18px;font-size:11px;}.kpis{display:flex;gap:30px;margin-bottom:20px;}.kpi .n{font-size:26px;font-weight:bold;line-height:1;}.kpi .l{font-size:10px;color:#666;text-transform:uppercase;}table{width:100%;border-collapse:collapse;font-size:11px;}th{background:#111;color:#fff;padding:6px 8px;text-align:left;font-size:10px;text-transform:uppercase;}td{padding:6px 8px;border-bottom:1px solid #ddd;}tr:nth-child(even) td{background:#f7f7f5;}tfoot td{font-weight:bold;border-top:2px solid #111;background:#f0f0ee;}.footer{margin-top:18px;font-size:10px;color:#888;}</style></head><body>
+  <h1>Reporte comparativo por colaborador</h1><div class="sub">Generado el ${now} | Mesa de Ayuda · Secretaría del Trabajo</div>
+  <div class="kpis"><div class="kpi"><div class="n">${real.length}</div><div class="l">Colaboradores</div></div><div class="kpi"><div class="n">${teamTotal.resolved}</div><div class="l">Total resueltos</div></div><div class="kpi"><div class="n">${teamTotal.open}</div><div class="l">Total abiertos/proceso</div></div><div class="kpi"><div class="n">${teamAvg!==null?fmtHours(teamAvg):'—'}</div><div class="l">Tiempo prom. equipo</div></div></div>
+  <table><thead><tr><th>Colaborador</th><th>Asignados</th><th>Resueltos</th><th>Abiertos/Proceso</th><th>Tiempo prom.</th><th>Críticos</th></tr></thead>
+  <tbody>${bodyRows||'<tr><td colspan="6" style="text-align:center;padding:20px;color:#999;">Sin colaboradores registrados</td></tr>'}</tbody>
+  <tfoot><tr><td>Total equipo</td><td>${teamTotal.total}</td><td>${teamTotal.resolved}</td><td>${teamTotal.open}</td><td>${teamAvg!==null?fmtHours(teamAvg):'—'}</td><td>${teamTotal.crit}</td></tr></tfoot></table>
+  <div class="footer">Mesa de Ayuda · Secretaría del Trabajo — Reporte comparativo de equipo</div><script>window.print();<\/script></body></html>`;
   const w=window.open('','_blank');w.document.write(html);w.document.close();
 }
 
