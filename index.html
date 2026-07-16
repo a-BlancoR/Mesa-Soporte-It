@@ -528,11 +528,19 @@ function sonoraHolidaySet(year){
   HOLIDAY_CACHE[year]=set;
   return set;
 }
+const CUSTOM_CLOSURES=[
+  {start:'2026-07-17',end:'2026-08-02'} // Periodo vacacional — regreso a oficinas el 3 de agosto de 2026
+];
+function isCustomClosure(date){
+  const key=date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
+  return CUSTOM_CLOSURES.some(r=>key>=r.start&&key<=r.end);
+}
 function isBusinessDay(date){
   const day=date.getDay();
   if(day===0||day===6) return false;
   const key=date.getFullYear()+'-'+date.getMonth()+'-'+date.getDate();
-  return !sonoraHolidaySet(date.getFullYear()).has(key);
+  if(sonoraHolidaySet(date.getFullYear()).has(key)) return false;
+  return !isCustomClosure(date);
 }
 function hoursBetween(a,b){
   if(!a||!b) return null;
