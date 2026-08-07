@@ -353,7 +353,10 @@
       <section class="view" id="view-metrics">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
           <h2 class="section-title" style="margin:0;"><span class="eyebrow">Desempeño</span> Productividad por colaborador</h2>
-          <button class="btn secondary" id="teamReportBtn">&#128202; Reporte comparativo</button>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <select id="teamReportMonth" style="font-family:var(--mono);font-size:12px;padding:8px 10px;border:1px solid var(--line);border-radius:4px;background:#fff;"></select>
+            <button class="btn secondary" id="teamReportBtn">&#128202; Reporte comparativo</button>
+          </div>
         </div>
         <div id="metricsContainer"></div>
       </section>
@@ -919,9 +922,13 @@ function generateReport(){
 
 function generateTeamReport(){
   const real=TECHS.filter(t=>!isProtectedName(t.name));
+  const monthSel=document.getElementById('teamReportMonth');
+  const monthVal=monthSel.value;
+  const periodLabel=monthVal==='all'?'Todo el histórico':monthSel.options[monthSel.selectedIndex].textContent;
+  const scoped=monthVal==='all'?TICKETS:TICKETS.filter(t=>t.created_at&&t.created_at.slice(0,7)===monthVal);
   const now=new Date().toLocaleString('es-MX',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
   const rows=real.map(({name})=>{
-    const own=TICKETS.filter(t=>t.technician===name);
+    const own=scoped.filter(t=>t.technician===name);
     const resolved=own.filter(t=>t.resolved_at);
     const times=resolved.map(t=>hoursBetween(t.created_at,t.resolved_at)).filter(h=>h!==null);
     const avg=times.length?times.reduce((a,b)=>a+b,0)/times.length:null;
@@ -934,11 +941,11 @@ function generateTeamReport(){
     open:rows.reduce((s,r)=>s+r.open,0),
     crit:rows.reduce((s,r)=>s+r.crit,0)
   };
-  const allTimes=TICKETS.filter(t=>real.some(r=>r.name===t.technician)&&t.resolved_at).map(t=>hoursBetween(t.created_at,t.resolved_at)).filter(h=>h!==null);
+  const allTimes=scoped.filter(t=>real.some(r=>r.name===t.technician)&&t.resolved_at).map(t=>hoursBetween(t.created_at,t.resolved_at)).filter(h=>h!==null);
   const teamAvg=allTimes.length?allTimes.reduce((a,b)=>a+b,0)/allTimes.length:null;
   const bodyRows=rows.map(r=>`<tr><td>${escapeHtml(r.name)}</td><td>${r.total}</td><td>${r.resolved}</td><td>${r.open}</td><td>${r.avg!==null?fmtHours(r.avg):'—'}</td><td>${r.crit}</td></tr>`).join('');
   const html=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Reporte comparativo — Mesa de Ayuda</title><style>body{font-family:Arial,sans-serif;font-size:12px;padding:30px;}h1{font-size:18px;margin-bottom:2px;}.sub{color:#666;margin-bottom:18px;font-size:11px;}.kpis{display:flex;gap:30px;margin-bottom:20px;}.kpi .n{font-size:26px;font-weight:bold;line-height:1;}.kpi .l{font-size:10px;color:#666;text-transform:uppercase;}table{width:100%;border-collapse:collapse;font-size:11px;}th{background:#111;color:#fff;padding:6px 8px;text-align:left;font-size:10px;text-transform:uppercase;}td{padding:6px 8px;border-bottom:1px solid #ddd;}tr:nth-child(even) td{background:#f7f7f5;}tfoot td{font-weight:bold;border-top:2px solid #111;background:#f0f0ee;}.footer{margin-top:18px;font-size:10px;color:#888;}</style></head><body>
-  <h1>Reporte comparativo por colaborador</h1><div class="sub">Generado el ${now} | Mesa de Ayuda · Secretaría del Trabajo</div>
+  <h1>Reporte comparativo por colaborador</h1><div class="sub">Periodo: ${escapeHtml(periodLabel)} · Generado el ${now} | Mesa de Ayuda · Secretaría del Trabajo</div>
   <div class="kpis"><div class="kpi"><div class="n">${real.length}</div><div class="l">Colaboradores</div></div><div class="kpi"><div class="n">${teamTotal.resolved}</div><div class="l">Total resueltos</div></div><div class="kpi"><div class="n">${teamTotal.open}</div><div class="l">Total abiertos/proceso</div></div><div class="kpi"><div class="n">${teamAvg!==null?fmtHours(teamAvg):'—'}</div><div class="l">Tiempo prom. equipo</div></div></div>
   <table><thead><tr><th>Colaborador</th><th>Asignados</th><th>Resueltos</th><th>Abiertos/Proceso</th><th>Tiempo prom.</th><th>Críticos</th></tr></thead>
   <tbody>${bodyRows||'<tr><td colspan="6" style="text-align:center;padding:20px;color:#999;">Sin colaboradores registrados</td></tr>'}</tbody>
@@ -1091,7 +1098,24 @@ function openModal(){document.getElementById('ticketOverlay').classList.add('act
 function closeModal(){document.getElementById('ticketOverlay').classList.remove('active');}
 
 /* ---- METRICS ---- */
+function populateReportMonths(){
+  const sel=document.getElementById('teamReportMonth');
+  const prevValue=sel.value;
+  const now=new Date();
+  const currentMonth=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const months=new Set(TICKETS.map(t=>t.created_at?t.created_at.slice(0,7):null).filter(Boolean));
+  months.add(currentMonth);
+  const sorted=Array.from(months).sort().reverse();
+  const fmt=ym=>{
+    const [y,m]=ym.split('-');
+    const label=new Date(Number(y),Number(m)-1,1).toLocaleDateString('es-MX',{month:'long',year:'numeric'});
+    return label.charAt(0).toUpperCase()+label.slice(1);
+  };
+  sel.innerHTML='<option value="all">Todo el histórico</option>'+sorted.map(ym=>`<option value="${ym}">${fmt(ym)}</option>`).join('');
+  sel.value=(prevValue&&Array.from(sel.options).some(o=>o.value===prevValue))?prevValue:currentMonth;
+}
 function renderMetrics(){
+  populateReportMonths();
   const real=TECHS.filter(t=>!isProtectedName(t.name));
   if(!real.length){document.getElementById('metricsContainer').innerHTML=`<div class="panel"><p style="margin:0;color:#6b6358;font-family:var(--mono);font-size:12.5px;">Agrega colaboradores en Catálogos para ver sus métricas.</p></div>`;return;}
   const maxRes=Math.max(1,...real.map(t=>TICKETS.filter(k=>k.technician===t.name&&k.resolved_at).length));
