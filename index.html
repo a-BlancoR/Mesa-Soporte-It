@@ -1024,6 +1024,31 @@ async function saveNewTicket(){
   refreshAllViews();
 }
 
+/* ---- Sincronizar catálogo maestro de solicitantes al corregir datos en un ticket ---- */
+async function syncRequesterCatalog(oldName,newName,newDept){
+  const oldLower=(oldName||'').toLowerCase();
+  const newLower=(newName||'').toLowerCase();
+  const oldRecord=REQUESTERS.find(r=>r.name.toLowerCase()===oldLower);
+  const conflictRecord=REQUESTERS.find(r=>r.name.toLowerCase()===newLower&&r.name.toLowerCase()!==oldLower);
+  if(conflictRecord){
+    // Ya existe otro solicitante distinto con ese nombre exacto: no fusionamos identidades automáticamente.
+    return{status:'conflict'};
+  }
+  if(oldRecord){
+    if(oldRecord.name!==newName||oldRecord.department!==newDept){
+      await sbPatch('requesters',{name:oldRecord.name},{name:newName,department:newDept});
+      oldRecord.name=newName;oldRecord.department=newDept;
+    }
+    return{status:'updated'};
+  }
+  if(!REQUESTERS.some(r=>r.name.toLowerCase()===newLower)){
+    await sbPost('requesters',{name:newName,department:newDept});
+    REQUESTERS.push({name:newName,department:newDept});
+    return{status:'created'};
+  }
+  return{status:'noop'};
+}
+
 /* ---- MODAL: detalle ticket (admin) ---- */
 function openTicketDetail(id){
   const t=TICKETS.find(x=>x.id===id);
@@ -1031,17 +1056,22 @@ function openTicketDetail(id){
   const techOpts=TECHS.map(tech=>`<option value="${escapeHtml(tech.name)}" ${tech.name===t.technician?'selected':''}>${escapeHtml(tech.name)}</option>`).join('');
   const statusOpts=['Abierto','En proceso','Resuelto','Cerrado'].map(s=>`<option ${s===t.status?'selected':''}>${s}</option>`).join('');
   const priorityOpts=['Baja','Media','Alta','Crítica'].map(p=>`<option ${p===t.priority?'selected':''}>${p}</option>`).join('');
+  const deptOpts=DEPTS.map(d=>`<option ${d.name===t.department?'selected':''}>${escapeHtml(d.name)}</option>`).join('');
   const resTime=t.resolved_at?hoursBetween(t.created_at,t.resolved_at):null;
   document.getElementById('ticketModal').innerHTML=`
     <button class="modal-close" id="closeModalBtn">&times;</button>
     <h3>${t.id}</h3>
-    <div class="modal-sub">Solicitado por ${escapeHtml(t.requester)} · ${escapeHtml(t.department)}</div>
+    <div class="modal-sub">Datos del solicitante editables por el administrador</div>
+    <div class="grid2">
+      <div class="field"><label>Solicitante</label><input type="text" id="editRequester" value="${escapeHtml(t.requester)}"></div>
+      <div class="field"><label>Departamento</label><select id="editDepartment">${deptOpts}</select></div>
+    </div>
     <div class="ticket-detail-meta">
       <div class="m"><div class="l">Solicitado</div>${fmtDateTime(t.created_at)}</div>
       <div class="m"><div class="l">Resuelto</div>${t.resolved_at?fmtDateTime(t.resolved_at):'—'}</div>
       <div class="m"><div class="l">Tiempo de respuesta</div>${resTime!==null?fmtHours(resTime):'—'}</div>
     </div>
-    <div class="desc-box">${escapeHtml(t.description)}</div>
+    <div class="field"><label>Descripción del problema</label><textarea id="editDescription" rows="4">${escapeHtml(t.description)}</textarea></div>
     <div class="grid3">
       <div class="field"><label>Prioridad</label><select id="editPriority">${priorityOpts}</select></div>
       <div class="field"><label>Estado</label><select id="editStatus">${statusOpts}</select></div>
@@ -1076,14 +1106,42 @@ function openTicketDetail(id){
   document.getElementById('closeModalBtn2').addEventListener('click',closeModal);
   document.getElementById('saveTicketEditBtn').addEventListener('click',async()=>{
     const newStatus=statusSel.value;
-    const updates={priority:document.getElementById('editPriority').value,status:newStatus,technician:document.getElementById('editTechnician').value||''};
+    const newRequester=toTitleCase(document.getElementById('editRequester').value.trim());
+    const newDescription=document.getElementById('editDescription').value.trim();
+    if(!newRequester){showToast('El solicitante no puede quedar vacío');return;}
+    if(!newDescription){showToast('La descripción no puede quedar vacía');return;}
+    const updates={
+      requester:newRequester,
+      department:document.getElementById('editDepartment').value,
+      description:newDescription,
+      priority:document.getElementById('editPriority').value,
+      status:newStatus,
+      technician:document.getElementById('editTechnician').value||''
+    };
     if(newStatus==='Resuelto'||newStatus==='Cerrado'){
       const rv=editResolvedAt.value;
       updates.resolved_at=rv?new Date(rv).toISOString():(t.resolved_at||new Date().toISOString());
     } else {updates.resolved_at=null;}
-    updates.log=[...(t.log||[]),{at:new Date().toISOString(),text:`Actualizado: ${newStatus}`}];
-    setSyncDot('busy'); await sbPatch('tickets',{id:t.id},updates); Object.assign(t,updates); setSyncDot('ok');
-    closeModal(); showToast(`Ticket ${t.id} actualizado`); refreshAllViews();
+    const changeNotes=[];
+    const requesterChanged=newRequester!==t.requester;
+    const deptChanged=updates.department!==t.department;
+    if(requesterChanged) changeNotes.push(`Solicitante corregido a "${newRequester}"`);
+    if(deptChanged) changeNotes.push(`Depto. corregido a "${updates.department}"`);
+    if(newDescription!==t.description) changeNotes.push('Descripción editada');
+    changeNotes.push(`Actualizado: ${newStatus}`);
+    updates.log=[...(t.log||[]),{at:new Date().toISOString(),text:changeNotes.join(' · ')}];
+    setSyncDot('busy');
+    let catalogResult=null;
+    if(requesterChanged||deptChanged){
+      catalogResult=await syncRequesterCatalog(t.requester,newRequester,updates.department);
+    }
+    await sbPatch('tickets',{id:t.id},updates); Object.assign(t,updates); setSyncDot('ok');
+    closeModal(); refreshAllViews();
+    if(catalogResult&&catalogResult.status==='conflict'){
+      showToast(`Ticket ${t.id} actualizado. Aviso: ya existe otro solicitante con ese nombre, revisa el catálogo`);
+    } else {
+      showToast(`Ticket ${t.id} actualizado`);
+    }
   });
   document.getElementById('deleteTicketBtn').addEventListener('click',async()=>{
     if(!confirm(`¿Eliminar definitivamente el ticket ${t.id}?`)) return;
