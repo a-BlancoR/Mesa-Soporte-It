@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mesa de Ayuda &middot; Secretaría del Trabajo</title>
+<style>
+  :root{
+    --ink:#1a1a1a;--paper:#f5f5f5;--panel:#ffffff;--line:#e0dada;--line-strong:#c9bcbc;
+    --accent:#7B1D42;--accent-soft:#f5e6ec;--ok:#2e6b3e;--ok-soft:#dff0e3;
+    --warn:#c47f00;--warn-soft:#fdf1d6;--crit:#9c2f2f;--crit-soft:#f8e0e0;
+    --gold:#E8A020;--gold-soft:#fdf0d6;
+    --mono:"Segoe UI Mono","Courier New",monospace;
+    --serif:"Georgia","Times New Roman",serif;
+    --sans:"Segoe UI","Helvetica Neue",Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.45;}
+  .shell{max-width:1280px;margin:0 auto;padding:0 28px 80px;}
+  .inst-header{background:var(--accent);padding:0 28px 0 0;border-bottom:4px solid var(--accent);display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;position:relative;}
+  .inst-header::before{content:"";position:absolute;inset:0;background-image:url('patron-fondo.png');background-repeat:repeat;background-size:220px auto;opacity:.16;pointer-events:none;}
+  .inst-header>*{position:relative;z-index:1;}
+  .inst-header .logo-wrap{display:flex;align-items:center;gap:20px;}
+  .inst-header .logo-plate{padding:14px 0 14px 14px;display:flex;align-items:center;}
+  .inst-header .logo-img{height:118px;width:auto;display:block;}
+  .inst-header .module-tag{font-family:var(--sans);border-left:2px solid rgba(255,255,255,.3);padding-left:20px;}
+  .inst-header .module-tag h1{font-family:var(--sans);font-weight:700;font-size:22px;margin:0;color:#fff;letter-spacing:.01em;text-transform:uppercase;display:flex;align-items:center;}
+  .inst-header .module-tag .sub{font-family:var(--sans);font-size:13px;color:rgba(255,255,255,.85);letter-spacing:.02em;margin-top:2px;}
+  .inst-header .right-controls{display:flex;align-items:center;gap:16px;}
+  .inst-header .right-controls .btn.secondary{color:#fff;border-color:rgba(255,255,255,.6);}
+  .inst-header .right-controls .btn.secondary:hover{background:rgba(255,255,255,.12);}
+  .clock{font-family:var(--sans);font-size:12px;color:#8a8378;text-align:right;}
+  .clock strong{color:var(--ink);display:block;font-size:13px;}
+  .inst-breadcrumb{background:#faf8f6;padding:9px 28px;font-family:var(--mono);font-size:11px;color:#8a8378;border-bottom:1px solid var(--line);letter-spacing:.02em;}
+  .inst-breadcrumb .crumb.current{color:var(--accent);font-weight:700;}
+  .crumb-home{font-family:inherit;font-size:inherit;background:none;border:none;padding:0;cursor:pointer;color:inherit;}
+  .crumb-home:hover{opacity:.65;}
+  nav.tabs{display:flex;gap:2px;padding:0 28px;background:#fff;border-bottom:1px solid var(--line);overflow-x:auto;}
+  nav.tabs button{font-family:var(--sans);font-size:12.5px;letter-spacing:.02em;text-transform:uppercase;background:none;border:none;cursor:pointer;padding:13px 18px;color:#666;position:relative;top:1px;font-weight:500;white-space:nowrap;}
+  nav.tabs button.active{color:var(--accent);border-bottom:3px solid var(--accent);font-weight:700;}
+  @media(max-width:640px){
+    .shell{padding:0 14px 50px;}
+    .inst-header{padding-right:14px;gap:10px;}
+    .inst-header .logo-plate{padding:8px 0 8px 14px;}
+    .inst-header .logo-img{height:44px;}
+    .inst-header .module-tag{padding-left:10px;border-left-width:1px;}
+    .inst-header .module-tag h1{font-size:14px;}
+    .inst-header .module-tag .sub{font-size:9.5px;}
+    .inst-header .right-controls{width:100%;justify-content:space-between;padding:0 14px 10px;gap:8px;}
+    .inst-header .right-controls .clock{display:none;}
+    .inst-breadcrumb{padding:8px 14px;font-size:10px;}
+    nav.tabs{padding:0 14px;}
+    nav.tabs button{padding:11px 12px;font-size:11.5px;}
+    .user-card{padding:24px 18px 22px;}
+    .user-card-wrap{padding:14px;}
+    .user-card h2{font-size:20px;}
+    .kpi-row{grid-template-columns:repeat(2,1fr);gap:10px;}
+    .kpi{padding:12px 14px;}
+    .kpi .num{font-size:24px;}
+    .toolbar{flex-direction:column;align-items:stretch;}
+    .toolbar .field{min-width:0;}
+  }
+  nav.tabs button:hover{color:var(--accent);}
+  main{padding-top:26px;}
+  .view{display:none;}
+  .view.active{display:block;}
+  h2.section-title{font-family:var(--serif);font-size:19px;font-weight:600;margin:0 0 16px;display:flex;align-items:center;gap:10px;}
+  h2.section-title .eyebrow{font-family:var(--sans);font-size:11px;color:var(--accent);border-left:3px solid var(--gold);padding-left:8px;letter-spacing:.04em;font-weight:600;text-transform:uppercase;}
+  button{font-family:var(--sans);cursor:pointer;}
+  .btn{font-family:var(--sans);font-size:12.5px;font-weight:600;letter-spacing:.02em;border:none;background:var(--accent);color:#fff;padding:9px 18px;border-radius:4px;transition:background .15s ease,transform .08s ease;}
+  .btn:hover{background:#5e1532;}
+  .btn:active{transform:translateY(1px);}
+  .btn.secondary{background:transparent;color:var(--accent);border:1.5px solid var(--accent);}
+  .btn.secondary:hover{background:var(--accent-soft);}
+  .btn.danger{background:var(--crit);border:none;}
+  .btn:disabled{opacity:.45;cursor:not-allowed;}
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap;}
+  input,select,textarea{font-family:var(--sans);font-size:13.5px;color:var(--ink);background:#fff;border:1px solid var(--line-strong);border-radius:3px;padding:9px 10px;width:100%;}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent);}
+  label{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#6b6358;display:block;margin-bottom:5px;}
+  .field{margin-bottom:16px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+  @media(max-width:760px){.grid2,.grid3{grid-template-columns:1fr;}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:22px;}
+  .kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:26px;}
+  @media(max-width:900px){.kpi-row{grid-template-columns:repeat(2,1fr);}}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:16px 18px;position:relative;overflow:hidden;}
+  .kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--gold);}
+  .kpi.crit::before{background:var(--crit);}
+  .kpi.warn::before{background:var(--warn);}
+  .kpi.ok::before{background:var(--ok);}
+  .kpi .num{font-family:var(--serif);font-size:30px;font-weight:600;line-height:1;}
+  .kpi .lab{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:#6b6358;margin-top:6px;}
+  .kpi svg.peak{display:block;margin-bottom:8px;}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:18px;}
+  .toolbar .field{margin-bottom:0;min-width:150px;flex:1;}
+  .toolbar .field.grow{flex:2;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  thead th{text-align:left;font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:#6b6358;border-bottom:2px solid var(--ink);padding:9px 10px;cursor:pointer;user-select:none;white-space:nowrap;}
+  thead th:hover{color:var(--ink);}
+  tbody td{padding:11px 10px;border-bottom:1px solid var(--line);vertical-align:top;}
+  tbody tr:hover{background:#fbf9f6;}
+  tbody tr{cursor:pointer;}
+  .empty-row td{text-align:center;padding:50px 10px;color:#6b6358;font-family:var(--mono);font-size:12px;cursor:default;}
+  .pill{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:.03em;text-transform:uppercase;padding:3px 8px;border-radius:3px;white-space:nowrap;}
+  .pill.pr-baja{background:#eee;color:#555;}
+  .pill.pr-media{background:var(--warn-soft);color:#8a651e;}
+  .pill.pr-alta{background:#f6dcc4;color:#9a4a16;}
+  .pill.pr-cr-tica,.pill.pr-crítica{background:var(--crit-soft);color:var(--crit);}
+  .pill.st-abierto{background:var(--crit-soft);color:var(--crit);}
+  .pill.st-en-proceso{background:var(--warn-soft);color:#8a651e;}
+  .pill.st-resuelto{background:var(--ok-soft);color:var(--ok);}
+  .pill.st-cerrado{background:#e7e7e3;color:#54524a;}
+  .ticket-id{font-family:var(--mono);color:#6b6358;font-size:12px;}
+  .overlay{position:fixed;inset:0;background:rgba(28,33,40,.45);display:none;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto;z-index:50;}
+  .overlay.active{display:flex;}
+  .modal{background:var(--panel);border-radius:6px;max-width:640px;width:100%;padding:30px 30px 26px;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+  .modal h3{font-family:var(--serif);font-size:20px;margin:0 0 4px;}
+  .modal .modal-sub{font-family:var(--mono);font-size:11px;color:#6b6358;margin-bottom:22px;}
+  .modal-close{float:right;background:none;border:none;font-size:20px;color:#999;line-height:1;}
+  .modal-close:hover{color:var(--ink);}
+  .divider{border:none;border-top:1px solid var(--line);margin:20px 0;}
+  .ticket-detail-meta{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:18px;}
+  .ticket-detail-meta .m{font-size:12.5px;}
+  .ticket-detail-meta .m .l{font-family:var(--mono);font-size:10px;text-transform:uppercase;color:#6b6358;letter-spacing:.04em;}
+  .desc-box{background:#fbf9f6;border:1px solid var(--line);border-radius:4px;padding:14px;font-size:13.5px;white-space:pre-wrap;margin-bottom:18px;}
+  .cat-list{list-style:none;margin:0;padding:0;}
+  .cat-list li{display:flex;justify-content:space-between;align-items:center;padding:10px 4px;border-bottom:1px solid var(--line);font-size:13.5px;}
+  .cat-list li .tag{font-family:var(--mono);font-size:10.5px;color:#6b6358;}
+  .cat-list .remove-btn{background:none;border:none;color:var(--crit);font-family:var(--mono);font-size:11px;}
+  .cat-list .remove-btn:hover{text-decoration:underline;}
+  .add-inline{display:flex;gap:8px;margin-top:14px;}
+  .add-inline input{flex:1;}
+  .col3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;align-items:start;}
+  @media(max-width:900px){.col3{grid-template-columns:1fr;}}
+  .tech-card{background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:18px 20px;margin-bottom:12px;}
+  .tech-card .row1{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;}
+  .tech-card .name{font-family:var(--serif);font-size:16px;font-weight:600;}
+  .tech-card .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+  @media(max-width:760px){.tech-card .stat-grid{grid-template-columns:repeat(2,1fr);}}
+  .tech-card .stat .v{font-family:var(--mono);font-size:18px;font-weight:600;}
+  .tech-card .stat .l{font-family:var(--mono);font-size:9.5px;text-transform:uppercase;color:#6b6358;letter-spacing:.03em;}
+  .bar-track{height:6px;background:#ece8e0;border-radius:3px;margin-top:10px;overflow:hidden;}
+  .bar-fill{height:100%;background:var(--gold);border-radius:3px;}
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--ink);color:var(--paper);padding:12px 18px;border-radius:4px;font-family:var(--mono);font-size:12.5px;opacity:0;transform:translateY(8px);transition:all .25s ease;z-index:100;}
+  .toast.show{opacity:1;transform:translateY(0);}
+  .small-note{font-family:var(--mono);font-size:11px;color:#6b6358;margin-top:6px;}
+  .loading-screen{position:fixed;inset:0;background:var(--paper);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;z-index:200;}
+  .loading-screen .l1{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--accent);text-transform:uppercase;}
+  .loading-screen .l2{font-family:var(--serif);font-size:20px;}
+  .sync-dot{width:8px;height:8px;border-radius:50%;background:#aaa;display:inline-block;margin-left:8px;vertical-align:middle;}
+  .sync-dot.ok{background:var(--ok);}
+  .sync-dot.err{background:var(--crit);}
+  .sync-dot.busy{background:var(--warn);animation:pulse .7s infinite alternate;}
+  @keyframes pulse{to{opacity:.3;}}
+
+  /* ---- Pantalla usuario ---- */
+  #userScreen{position:fixed;inset:0;background:var(--paper);display:flex;flex-direction:column;align-items:stretch;padding:0;z-index:150;overflow-y:auto;}
+  .user-card-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:24px;width:100%;}
+  .user-card{background:var(--panel);border:1px solid var(--line);border-radius:8px;max-width:520px;width:100%;padding:36px 32px 28px;box-shadow:0 8px 40px rgba(0,0,0,.1);}
+  .user-card h2{font-family:var(--sans);font-size:24px;font-weight:700;margin:0 0 4px;color:var(--accent);}
+  .user-card .uc-sub{font-family:var(--sans);font-size:12px;color:#666;margin-bottom:24px;}
+  .success-msg{text-align:center;padding:20px 0;}
+  .success-msg .s-icon{font-size:48px;margin-bottom:12px;}
+  .success-msg h3{font-family:var(--serif);font-size:20px;margin:0 0 6px;}
+  .success-msg p{font-family:var(--mono);font-size:12px;color:#6b6358;margin:0 0 20px;}
+  .admin-link{position:fixed;bottom:16px;right:20px;font-family:var(--mono);font-size:11px;color:#b9b2a3;background:none;border:none;cursor:pointer;text-decoration:underline;z-index:160;}
+  .admin-link:hover{color:var(--ink);}
+  .signature-mark{position:fixed;bottom:4px;right:20px;font-family:var(--mono);font-size:9px;color:#d8d2c8;letter-spacing:.03em;z-index:160;pointer-events:none;}
+  #loginOverlay{z-index:300;}
+  #identityOverlay{z-index:300;}
+</style>
+</head>
+<body>
+
+<div class="loading-screen" id="loadingScreen">
+  <div class="l1">Mesa de Ayuda &middot; Secretaría del Trabajo</div>
+  <div class="l2">Conectando&hellip;</div>
+</div>
+
+<!-- PANTALLA USUARIO -->
+<div id="userScreen" style="display:none;">
+  <header class="inst-header">
+    <div class="logo-wrap">
+      <div class="logo-plate"><img class="logo-img" src="LOGO%20ST%20Blanco.png" alt="Gobierno de Sonora · Secretaría del Trabajo"></div>
+      <div class="module-tag">
+        <h1>Mesa de Ayuda</h1>
+        <div class="sub">Soporte técnico · Secretaría del Trabajo</div>
+      </div>
+    </div>
+  </header>
+  <div class="inst-breadcrumb"><button class="crumb-home" id="ucHomeBtn" title="Volver al inicio">🏠</button>&nbsp; / &nbsp;Mesa de Ayuda&nbsp; / &nbsp;<span class="crumb current">Reportar un problema</span></div>
+  <div class="user-card-wrap">
+    <div class="user-card" id="userCard">
+      <h2>Reportar un problema</h2>
+      <div class="uc-sub">Completa el formulario y el equipo de informática atenderá tu solicitud.</div>
+
+      <div class="field">
+        <label>Tu nombre</label>
+        <select id="ucUserSelect">
+          <option value="">— Selecciona tu nombre —</option>
+          <option value="__new__">+ Mi nombre no está en la lista</option>
+        </select>
+        <div id="ucNewNameWrap" style="display:none;margin-top:8px;">
+          <input type="text" id="ucNewName" placeholder="Escribe tu nombre completo">
+        </div>
+      </div>
+
+      <div class="field" id="ucDeptField" style="display:none;">
+        <label>Departamento</label>
+        <select id="ucDeptSelect">
+          <option value="">— Selecciona tu departamento —</option>
+        </select>
+        <div id="ucNewDeptWrap" style="display:none;margin-top:8px;">
+          <input type="text" id="ucNewDept" placeholder="Escribe el nombre de tu departamento">
+        </div>
+      </div>
+
+      <div class="field" id="ucDeptDisplay" style="display:none;">
+        <label>Departamento</label>
+        <input type="text" id="ucDeptText" disabled>
+      </div>
+
+      <div class="field">
+        <label>Describe el problema</label>
+        <textarea id="ucDescription" rows="4" placeholder="Explica lo que está pasando con detalle…"></textarea>
+      </div>
+
+      <div class="field">
+        <label>Personal asignado sugerido (opcional)</label>
+        <select id="ucTechSelect">
+          <option value="">Sin preferencia</option>
+        </select>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn" id="ucSubmitBtn" style="width:100%;">Enviar solicitud</button>
+      </div>
+    </div>
+  </div>
+  <button class="admin-link" id="adminLinkBtn">Administrador</button>
+  <div class="signature-mark">Hecho por 34330</div>
+</div>
+
+<!-- LOGIN ADMIN (fuera del userScreen para evitar superposición) -->
+<div class="overlay" id="loginOverlay">
+  <div class="modal" style="max-width:360px;">
+    <button class="modal-close" id="loginCloseBtn">&times;</button>
+    <h3>Acceso administrador</h3>
+    <div class="modal-sub">Solo Personal de Informática</div>
+    <div class="field"><label>Correo electrónico</label><input type="email" id="loginUser" autocomplete="username"></div>
+    <div class="field"><label>Contraseña</label><input type="password" id="loginPass" autocomplete="current-password"></div>
+    <div style="color:var(--crit);font-family:var(--mono);font-size:11px;min-height:16px;margin-bottom:12px;" id="loginError"></div>
+    <button class="btn" id="loginSubmitBtn" style="width:100%;">Entrar</button>
+  </div>
+</div>
+
+<!-- SELECCIÓN DE IDENTIDAD (para filtrar notificaciones por colaborador) -->
+<div class="overlay" id="identityOverlay">
+  <div class="modal" style="max-width:380px;">
+    <button class="modal-close" id="identityCloseBtn">&times;</button>
+    <h3>¿Quién eres?</h3>
+    <div class="modal-sub">Así te notificamos solo lo que te corresponde</div>
+    <div class="field">
+      <label>Tu nombre</label>
+      <select id="identitySelect">
+        <option value="">Todos los tickets (sin filtrar)</option>
+      </select>
+    </div>
+    <button class="btn" id="identitySaveBtn" style="width:100%;">Guardar</button>
+  </div>
+</div>
+
+<!-- APP ADMIN -->
+<div id="appShell" style="display:none;">
+  <header class="inst-header">
+    <div class="logo-wrap">
+      <div class="logo-plate"><img class="logo-img" src="LOGO%20ST%20Blanco.png" alt="Gobierno de Sonora · Secretaría del Trabajo"></div>
+      <div class="module-tag">
+        <h1>Mesa de Ayuda <span class="sync-dot" id="syncDot"></span></h1>
+        <div class="sub">Bitácora de tickets &amp; productividad técnica</div>
+      </div>
+    </div>
+    <div class="right-controls">
+      <div class="clock">
+        <strong id="clockDate">&nbsp;</strong>
+        <span id="clockTime">&nbsp;</span>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn secondary" id="identityBtn" style="font-size:11px;padding:5px 12px;">👤 Elegir quién eres</button>
+        <button class="btn secondary" id="notifBtn" style="font-size:11px;padding:5px 12px;">🔔 Activar notificaciones</button>
+        <button class="btn secondary" id="logoutBtn" style="font-size:11px;padding:5px 12px;">Cerrar sesión</button>
+      </div>
+    </div>
+  </header>
+  <div class="inst-breadcrumb">🏠&nbsp; / &nbsp;Mesa de Ayuda&nbsp; / &nbsp;<span class="crumb current" id="breadcrumbCurrent">Tablero</span></div>
+  <nav class="tabs">
+    <button class="tab-btn active" data-view="dashboard">Tablero</button>
+    <button class="tab-btn" data-view="tickets">Tickets</button>
+    <button class="tab-btn" data-view="metrics">Productividad</button>
+    <button class="tab-btn" data-view="catalogs">Catálogos</button>
+  </nav>
+
+  <div class="shell">
+    <main>
+      <section class="view active" id="view-dashboard">
+        <h2 class="section-title"><span class="eyebrow">Resumen</span> Estado general</h2>
+        <div class="kpi-row" id="kpiRow"></div>
+        <div class="col3">
+          <div class="panel" style="grid-column:span 2;">
+            <h2 class="section-title" style="font-size:15px;">Tickets abiertos &amp; en proceso</h2>
+            <table><thead><tr><th>Folio</th><th>Solicitante</th><th>Depto.</th><th>Prioridad</th><th>Estado</th><th>Colaborador</th></tr></thead>
+            <tbody id="dashOpenTable"></tbody></table>
+          </div>
+          <div class="panel">
+            <h2 class="section-title" style="font-size:15px;">Acción rápida</h2>
+            <p style="font-size:13px;color:#54524a;margin-top:0;">Registra una solicitud directamente desde aquí.</p>
+            <button class="btn" style="width:100%;" id="quickNewTicket">+ Nuevo ticket</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-tickets">
+        <h2 class="section-title"><span class="eyebrow">Bitácora</span> Todos los tickets</h2>
+        <div class="toolbar">
+          <div class="field grow"><label>Buscar</label><input type="text" id="searchInput" placeholder="Folio, solicitante, descripción..."></div>
+          <div class="field"><label>Estado</label>
+            <select id="filterStatus"><option value="">Todos</option><option>Abierto</option><option>En proceso</option><option>Resuelto</option><option>Cerrado</option></select>
+          </div>
+          <div class="field"><label>Prioridad</label>
+            <select id="filterPriority"><option value="">Todas</option><option>Baja</option><option>Media</option><option>Alta</option><option>Crítica</option></select>
+          </div>
+          <div class="field"><label>Personal de Informática</label>
+            <select id="filterTech"><option value="">Todos</option></select>
+          </div>
+          <button class="btn secondary" id="reportBtn" disabled>&#128438; Reporte</button>
+          <button class="btn" id="openNewTicketBtn">+ Nuevo ticket</button>
+        </div>
+        <div class="panel" style="padding:0;overflow-x:auto;">
+          <table>
+            <thead><tr>
+              <th data-sort="id">Folio</th><th data-sort="requester">Solicitante</th>
+              <th data-sort="department">Depto.</th><th data-sort="priority">Prioridad</th>
+              <th data-sort="status">Estado</th><th data-sort="technician">Colaborador</th>
+              <th data-sort="created_at">Solicitado</th><th data-sort="resolved_at">Resuelto</th>
+            </tr></thead>
+            <tbody id="ticketsTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="view" id="view-metrics">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+          <h2 class="section-title" style="margin:0;"><span class="eyebrow">Desempeño</span> Productividad por colaborador</h2>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <select id="teamReportMonth" style="font-family:var(--mono);font-size:12px;padding:8px 10px;border:1px solid var(--line);border-radius:4px;background:#fff;"></select>
+            <button class="btn secondary" id="teamReportBtn">&#128202; Reporte comparativo</button>
+          </div>
+        </div>
+        <div id="metricsContainer"></div>
+      </section>
+
+      <section class="view" id="view-catalogs">
+        <h2 class="section-title"><span class="eyebrow">Administración</span> Catálogos maestros</h2>
+        <p style="font-size:12.5px;color:#6b6358;margin-top:-8px;">Agrega aquí los nombres una sola vez para mantener las métricas confiables.</p>
+        <div class="col3">
+          <div class="panel">
+            <h2 class="section-title" style="font-size:14px;">Personal de Informática</h2>
+            <ul class="cat-list" id="techList"></ul>
+            <div class="add-inline">
+              <input type="text" id="newTechInput" placeholder="Nombre del colaborador">
+              <button class="btn secondary" id="addTechBtn">Agregar</button>
+            </div>
+          </div>
+          <div class="panel">
+            <h2 class="section-title" style="font-size:14px;">Departamentos</h2>
+            <ul class="cat-list" id="deptList"></ul>
+            <div class="add-inline">
+              <input type="text" id="newDeptInput" placeholder="Nombre del departamento">
+              <button class="btn secondary" id="addDeptBtn">Agregar</button>
+            </div>
+          </div>
+          <div class="panel">
+            <h2 class="section-title" style="font-size:14px;">Usuarios solicitantes</h2>
+            <ul class="cat-list" id="userList"></ul>
+            <div class="add-inline" style="flex-direction:column;gap:8px;">
+              <input type="text" id="newUserInput" placeholder="Nombre del usuario">
+              <select id="newUserDept"><option value="">Departamento</option></select>
+              <button class="btn secondary" id="addUserBtn" style="width:100%;">Agregar usuario</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<div class="overlay" id="ticketOverlay"><div class="modal" id="ticketModal"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+
+const SB_URL = 'https://yvkycguwkchikrgbxyxa.supabase.co';
+const SB_KEY = 'sb_publishable_ewrWWuX-JGoMlTlxbVXr5A_oeRllP1j';
+const EMAILJS_SERVICE = 'service_iucb5sj';
+const EMAILJS_TEMPLATE = 'template_1btjxkb';
+const EMAILJS_KEY = 'VjKO3g-lW8IT4qoc1';
+
+let SESSION=null; // {access_token,refresh_token,expires_at} set on successful Supabase Auth login, held only in memory
+async function refreshSession(){
+  if(!SESSION||!SESSION.refresh_token) return false;
+  try{
+    const r=await fetch(`${SB_URL}/auth/v1/token?grant_type=refresh_token`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SB_KEY},
+      body:JSON.stringify({refresh_token:SESSION.refresh_token})
+    });
+    const data=await r.json();
+    if(!r.ok||!data.access_token) return false;
+    SESSION={access_token:data.access_token,refresh_token:data.refresh_token,expires_at:Date.now()+(data.expires_in||3600)*1000};
+    return true;
+  }catch(e){ return false; }
+}
+async function ensureSession(){
+  if(!SESSION) return false;
+  if(Date.now()>SESSION.expires_at-120000) return await refreshSession();
+  return true;
+}
+function getHeaders(){
+  const token=SESSION&&SESSION.access_token?SESSION.access_token:SB_KEY;
+  return {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+token};
+}
+
+async function sendTicketEmail(ticket){
+  try{
+    await fetch('https://api.emailjs.com/api/v1.0/email/send',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        service_id: EMAILJS_SERVICE,
+        template_id: EMAILJS_TEMPLATE,
+        user_id: EMAILJS_KEY,
+        template_params:{
+          ticket_id: ticket.id,
+          usuario: ticket.requester,
+          departamento: ticket.department,
+          descripcion: ticket.description,
+          colaborador: ticket.technician||'Sin asignar',
+          fecha: new Date(ticket.created_at).toLocaleString('es-MX',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})
+        }
+      })
+    });
+  }catch(e){
+    console.error('Error al enviar correo:',e);
+  }
+}
+
+function buildQuery(params){
+  if(!params) return '';
+  const parts=Object.entries(params).map(([k,v])=>`${encodeURIComponent(k)}=${encodeURIComponent(v)}`);
+  return parts.length?'?'+parts.join('&'):'';
+}
+async function sbGet(table,params){
+  const order=table==='tickets'?'created_at.desc':'name.asc';
+  const qs=buildQuery({...params,order});
+  const r=await fetch(`${SB_URL}/rest/v1/${table}${qs}`,{headers:{...getHeaders(),'Prefer':'return=representation'}});
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function sbPost(table,body,{representation=true}={}){
+  const r=await fetch(`${SB_URL}/rest/v1/${table}`,{method:'POST',headers:{...getHeaders(),'Prefer':representation?'return=representation':'return=minimal'},body:JSON.stringify(body)});
+  if(!r.ok) throw new Error(await r.text());
+  return representation?r.json():null;
+}
+async function sbPatch(table,match,body){
+  const qs=buildQuery(Object.fromEntries(Object.entries(match).map(([k,v])=>[k,`eq.${v}`])));
+  const r=await fetch(`${SB_URL}/rest/v1/${table}${qs}`,{method:'PATCH',headers:{...getHeaders(),'Prefer':'return=representation'},body:JSON.stringify(body)});
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function sbDelete(table,match){
+  const qs=buildQuery(Object.fromEntries(Object.entries(match).map(([k,v])=>[k,`eq.${v}`])));
+  const r=await fetch(`${SB_URL}/rest/v1/${table}${qs}`,{method:'DELETE',headers:getHeaders()});
+  if(!r.ok) throw new Error(await r.text());
+}
+async function nextId(){
+  const r=await fetch(`${SB_URL}/rest/v1/rpc/nextval`,{method:'POST',headers:getHeaders(),body:JSON.stringify({sequence_name:'ticket_seq'})});
+  if(!r.ok) return `TK-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
+  const n=await r.json();
+  return `TK-${new Date().getFullYear()}-${String(n).padStart(4,'0')}`;
+}
+
+let TICKETS=[],TECHS=[],DEPTS=[],REQUESTERS=[];
+let isAdmin=false;
+let MY_IDENTITY=localStorage.getItem('mesadeayuda_identity')||'';
+
+function setSyncDot(state){
+  const d=document.getElementById('syncDot');
+  if(!d) return;
+  d.className='sync-dot '+state;
+}
+async function loadAll(){
+  // Los tickets NO se cargan aquí: solo admin autenticado puede leerlos (ver showAdminShell).
+  [TECHS,DEPTS,REQUESTERS]=await Promise.all([sbGet('technicians'),sbGet('departments'),sbGet('requesters')]);
+}
+
+function fmtDateTime(iso){
+  if(!iso) return '—';
+  const d=new Date(iso);
+  if(isNaN(d)) return '—';
+  return d.toLocaleString('es-MX',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+const WORK_START_HOUR=8, WORK_END_HOUR=15;
+const HOLIDAY_CACHE={};
+function nthMondayOfMonth(year,month,n){
+  const d=new Date(year,month-1,1);
+  let count=0;
+  while(true){
+    if(d.getDay()===1){count++;if(count===n) return new Date(d);}
+    d.setDate(d.getDate()+1);
+  }
+}
+function sonoraHolidaySet(year){
+  if(HOLIDAY_CACHE[year]) return HOLIDAY_CACHE[year];
+  const set=new Set();
+  const key=(m,d)=>year+'-'+(m-1)+'-'+d;
+  [[1,1],[2,24],[5,1],[5,5],[7,17],[9,15],[9,16],[10,12],[11,2],[12,25]].forEach(([m,d])=>set.add(key(m,d)));
+  [nthMondayOfMonth(year,2,1),nthMondayOfMonth(year,3,3),nthMondayOfMonth(year,11,3)].forEach(d=>set.add(d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate()));
+  HOLIDAY_CACHE[year]=set;
+  return set;
+}
+const CUSTOM_CLOSURES=[
+  {start:'2026-07-17',end:'2026-08-02'} // Periodo vacacional — regreso a oficinas el 3 de agosto de 2026
+];
+function isCustomClosure(date){
+  const key=date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
+  return CUSTOM_CLOSURES.some(r=>key>=r.start&&key<=r.end);
+}
+function isBusinessDay(date){
+  const day=date.getDay();
+  if(day===0||day===6) return false;
+  const key=date.getFullYear()+'-'+date.getMonth()+'-'+date.getDate();
+  if(sonoraHolidaySet(date.getFullYear()).has(key)) return false;
+  return !isCustomClosure(date);
+}
+function hoursBetween(a,b){
+  if(!a||!b) return null;
+  const start=new Date(a),end=new Date(b);
+  if(isNaN(start)||isNaN(end)||end<start) return null;
+  let totalMs=0;
+  const cursor=new Date(start.getFullYear(),start.getMonth(),start.getDate());
+  const endDay=new Date(end.getFullYear(),end.getMonth(),end.getDate());
+  while(cursor<=endDay){
+    if(isBusinessDay(cursor)){
+      const dayStart=new Date(cursor);dayStart.setHours(WORK_START_HOUR,0,0,0);
+      const dayEnd=new Date(cursor);dayEnd.setHours(WORK_END_HOUR,0,0,0);
+      const segStart=start>dayStart?start:dayStart;
+      const segEnd=end<dayEnd?end:dayEnd;
+      if(segEnd>segStart) totalMs+=(segEnd-segStart);
+    }
+    cursor.setDate(cursor.getDate()+1);
+  }
+  return totalMs/36e5;
+}
+function fmtHours(h){
+  if(h===null||isNaN(h)) return '—';
+  if(h<1) return Math.round(h*60)+' min';
+  if(h<14) return h.toFixed(1)+' h';
+  return (h/(WORK_END_HOUR-WORK_START_HOUR)).toFixed(1)+' días hábiles';
+}
+function slugify(s){return(s||'').toLowerCase().trim().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');}
+const TITLE_CASE_STOPWORDS=new Set(['de','del','la','las','el','los','y','o','e','u','en','a','con','para','por','un','una','unos','unas','al']);
+function toTitleCase(s){
+  return (s||'').trim().split(/\s+/).map((word,i)=>{
+    const lower=word.toLowerCase();
+    if(i>0&&TITLE_CASE_STOPWORDS.has(lower)) return lower;
+    return lower.charAt(0).toUpperCase()+lower.slice(1);
+  }).join(' ');
+}
+function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2400);}
+function priorityWeight(p){return{Crítica:4,Alta:3,Media:2,Baja:1}[p]||0;}
+function pixelPeak(){
+  let s='<svg class="peak" width="128" height="24" viewBox="0 0 128 24" xmlns="http://www.w3.org/2000/svg">';
+  for(let i=0;i<9;i++){
+    const dx=i*14,delta=Math.abs(i-4)*4,y=2+delta;
+    const color=i%2===0?'var(--accent)':'var(--gold)';
+    s+=`<rect x="${dx}" y="${y}" width="8" height="8" fill="${color}" transform="rotate(45 ${dx+4} ${y+4})"></rect>`;
+  }
+  return s+'</svg>';
+}
+function nowLocalInputValue(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16);}
+function isProtectedName(name){return['sin asignar'].includes((name||'').toLowerCase().trim());}
+
+/* ---- PANTALLA USUARIO ---- */
+function showUserScreen(){
+  isAdmin=false;
+  document.getElementById('userScreen').style.display='flex';
+  document.getElementById('appShell').style.display='none';
+  populateUserScreen();
+}
+
+function populateUserScreen(){
+  const sel=document.getElementById('ucUserSelect');
+  sel.innerHTML='<option value="">— Selecciona tu nombre —</option>'+
+    REQUESTERS.map(r=>`<option value="${escapeHtml(r.name)}" data-dept="${escapeHtml(r.department)}">${escapeHtml(r.name)}</option>`).join('')+
+    '<option value="__new__">+ Mi nombre no está en la lista</option>';
+
+  const techSel=document.getElementById('ucTechSelect');
+  techSel.innerHTML='<option value="">Sin preferencia</option>'+
+    TECHS.filter(t=>!isProtectedName(t.name)).map(t=>`<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`).join('');
+
+  const deptSel=document.getElementById('ucDeptSelect');
+  deptSel.innerHTML='<option value="">— Selecciona tu departamento —</option>'+
+    DEPTS.filter(d=>!isProtectedName(d.name)).map(d=>`<option>${escapeHtml(d.name)}</option>`).join('')+
+    '<option value="__new__">+ Agregar mi departamento</option>';
+  deptSel.onchange=()=>{
+    document.getElementById('ucNewDeptWrap').style.display=deptSel.value==='__new__'?'block':'none';
+  };
+
+  sel.onchange=()=>{
+    const v=sel.value;
+    const newWrap=document.getElementById('ucNewNameWrap');
+    const deptField=document.getElementById('ucDeptField');
+    const deptDisplay=document.getElementById('ucDeptDisplay');
+    newWrap.style.display=v==='__new__'?'block':'none';
+    if(v&&v!=='__new__'){
+      const dept=sel.selectedOptions[0].dataset.dept||'';
+      document.getElementById('ucDeptText').value=dept;
+      deptDisplay.style.display='block';
+      deptField.style.display='none';
+    } else if(v==='__new__'){
+      deptField.style.display='block';
+      deptDisplay.style.display='none';
+    } else {
+      deptField.style.display='none';
+      deptDisplay.style.display='none';
+    }
+  };
+}
+
+async function submitUserTicket(){
+  const sel=document.getElementById('ucUserSelect');
+  let requester='',department='';
+  if(sel.value==='__new__'){
+    requester=toTitleCase(document.getElementById('ucNewName').value.trim());
+    department=document.getElementById('ucDeptSelect').value;
+    if(!requester){showToast('Escribe tu nombre completo');return;}
+    if(!department){showToast('Selecciona tu departamento');return;}
+    if(department==='__new__'){
+      department=toTitleCase(document.getElementById('ucNewDept').value.trim());
+      if(!department){showToast('Escribe el nombre de tu departamento');return;}
+      if(!DEPTS.some(d=>d.name.toLowerCase()===department.toLowerCase())){
+        await sbPost('departments',{name:department});
+        DEPTS.push({name:department});
+      }
+    }
+    if(!REQUESTERS.some(r=>r.name.toLowerCase()===requester.toLowerCase())){
+      await sbPost('requesters',{name:requester,department});
+      REQUESTERS.push({name:requester,department});
+    }
+  } else if(!sel.value){showToast('Selecciona tu nombre');return;}
+  else{requester=sel.value;department=sel.selectedOptions[0].dataset.dept||'';}
+
+  const description=document.getElementById('ucDescription').value.trim();
+  if(!description){showToast('Describe el problema');return;}
+
+  const btn=document.getElementById('ucSubmitBtn');
+  btn.disabled=true; btn.textContent='Enviando…';
+
+  const id=await nextId();
+  const tech=document.getElementById('ucTechSelect').value||'';
+  const ticket={
+    id,requester,department,description,
+    priority:'Media',status:'Abierto',technician:tech,
+    created_at:new Date().toISOString(),resolved_at:null,
+    log:[{at:new Date().toISOString(),text:'Ticket creado por usuario'}]
+  };
+  await sbPost('tickets',ticket,{representation:false});
+  sendTicketEmail(ticket);
+
+  document.getElementById('userCard').innerHTML=`
+    <div class="success-msg">
+      <div class="s-icon">✅</div>
+      <h3>¡Solicitud enviada!</h3>
+      <p>Tu folio es <strong>${id}</strong>.<br>El equipo de informática atenderá tu solicitud a la brevedad.</p>
+      <button class="btn" id="ucNewTicketBtn" style="margin:0 auto;">Reportar otro problema</button>
+    </div>`;
+  document.getElementById('ucNewTicketBtn').addEventListener('click',resetUserForm);
+}
+
+function resetUserForm(){
+  document.getElementById('userCard').innerHTML=`
+    <h2>Reportar un problema</h2>
+    <div class="uc-sub">Completa el formulario y el equipo de informática atenderá tu solicitud.</div>
+    <div class="field"><label>Tu nombre</label>
+      <select id="ucUserSelect"><option value="">— Selecciona tu nombre —</option><option value="__new__">+ Mi nombre no está en la lista</option></select>
+      <div id="ucNewNameWrap" style="display:none;margin-top:8px;"><input type="text" id="ucNewName" placeholder="Escribe tu nombre completo"></div>
+    </div>
+    <div class="field" id="ucDeptField" style="display:none;"><label>Departamento</label>
+      <select id="ucDeptSelect"><option value="">— Selecciona tu departamento —</option></select>
+      <div id="ucNewDeptWrap" style="display:none;margin-top:8px;"><input type="text" id="ucNewDept" placeholder="Escribe el nombre de tu departamento"></div>
+    </div>
+    <div class="field" id="ucDeptDisplay" style="display:none;"><label>Departamento</label><input type="text" id="ucDeptText" disabled></div>
+    <div class="field"><label>Describe el problema</label><textarea id="ucDescription" rows="4" placeholder="Explica lo que está pasando con detalle…"></textarea></div>
+    <div class="field"><label>Personal asignado sugerido (opcional)</label><select id="ucTechSelect"><option value="">Sin preferencia</option></select></div>
+    <div class="btn-row"><button class="btn" id="ucSubmitBtn" style="width:100%;">Enviar solicitud</button></div>`;
+  populateUserScreen();
+  document.getElementById('ucSubmitBtn').addEventListener('click',submitUserTicket);
+}
+
+/* ---- LOGIN ADMIN ---- */
+function showLogin(){
+  document.getElementById('loginOverlay').classList.add('active');
+  document.getElementById('loginError').textContent='';
+  document.getElementById('loginUser').value='';
+  document.getElementById('loginPass').value='';
+  setTimeout(()=>document.getElementById('loginUser').focus(),100);
+}
+function hideLogin(){document.getElementById('loginOverlay').classList.remove('active');}
+
+/* ---- IDENTIDAD (para filtrar notificaciones por colaborador) ---- */
+function updateIdentityBtnLabel(){
+  const btn=document.getElementById('identityBtn');
+  btn.textContent=MY_IDENTITY?`👤 ${MY_IDENTITY}`:'👤 Elegir quién eres';
+}
+function openIdentityPicker(){
+  const sel=document.getElementById('identitySelect');
+  sel.innerHTML='<option value="">— Selecciona tu nombre —</option>'+
+    TECHS.filter(t=>!isProtectedName(t.name)).map(t=>`<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`).join('');
+  sel.value=MY_IDENTITY;
+  document.getElementById('identityOverlay').classList.add('active');
+}
+function hideIdentityPicker(){document.getElementById('identityOverlay').classList.remove('active');}
+function saveIdentity(){
+  MY_IDENTITY=document.getElementById('identitySelect').value;
+  localStorage.setItem('mesadeayuda_identity',MY_IDENTITY);
+  updateIdentityBtnLabel();
+  hideIdentityPicker();
+  showToast(MY_IDENTITY?`Notificaciones filtradas para ${MY_IDENTITY}`:'Recibirás todas las notificaciones');
+}
+
+async function tryLogin(){
+  const email=document.getElementById('loginUser').value.trim();
+  const pass=document.getElementById('loginPass').value;
+  const errBox=document.getElementById('loginError');
+  const btn=document.getElementById('loginSubmitBtn');
+  if(!email||!pass){errBox.textContent='Ingresa correo y contraseña.';return;}
+  errBox.textContent='';btn.disabled=true;btn.textContent='Verificando…';
+  try{
+    const r=await fetch(`${SB_URL}/auth/v1/token?grant_type=password`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SB_KEY},
+      body:JSON.stringify({email,password:pass})
+    });
+    const data=await r.json();
+    if(!r.ok||!data.access_token){
+      errBox.textContent='Usuario o contraseña incorrectos.';
+      return;
+    }
+    SESSION={access_token:data.access_token,refresh_token:data.refresh_token,expires_at:Date.now()+(data.expires_in||3600)*1000};
+    hideLogin();
+    await showAdminShell();
+  }catch(e){
+    errBox.textContent='No se pudo conectar. Intenta de nuevo.';
+  }finally{
+    btn.disabled=false;btn.textContent='Entrar';
+  }
+}
+
+/* ---- SHELL ADMIN ---- */
+async function showAdminShell(){
+  isAdmin=true;
+  document.getElementById('userScreen').style.display='none';
+  document.getElementById('appShell').style.display='block';
+  setSyncDot('busy');
+  try{
+    TICKETS=await sbGet('tickets');
+  }catch(e){
+    setSyncDot('err');
+    isAdmin=false;
+    SESSION=null;
+    document.getElementById('appShell').style.display='none';
+    showUserScreen();
+    showToast('Sesión no autorizada. Verifica tus credenciales.');
+    return;
+  }
+  setSyncDot('ok');
+  refreshAllViews();
+  updateIdentityBtnLabel();
+  if(!MY_IDENTITY) openIdentityPicker();
+  startPolling();
+}
+
+function tickClock(){
+  const d=new Date();
+  document.getElementById('clockDate').textContent=d.toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('clockTime').textContent=d.toLocaleTimeString('es-MX');
+}
+
+const VIEW_LABELS={dashboard:'Tablero',tickets:'Tickets',metrics:'Productividad',catalogs:'Catálogos'};
+function setupTabs(){
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('view-'+btn.dataset.view).classList.add('active');
+      const bc=document.getElementById('breadcrumbCurrent');
+      if(bc) bc.textContent=VIEW_LABELS[btn.dataset.view]||'';
+      if(btn.dataset.view==='dashboard') renderDashboard();
+      if(btn.dataset.view==='tickets') renderTicketsTable();
+      if(btn.dataset.view==='metrics') renderMetrics();
+      if(btn.dataset.view==='catalogs') renderCatalogs();
+    });
+  });
+}
+function goToView(name){document.querySelector(`.tab-btn[data-view="${name}"]`).click();}
+
+/* ---- DASHBOARD ---- */
+function renderDashboard(){
+  const open=TICKETS.filter(t=>t.status==='Abierto'||t.status==='En proceso');
+  const critical=open.filter(t=>t.priority==='Crítica');
+  const times=TICKETS.filter(t=>t.resolved_at).map(t=>hoursBetween(t.created_at,t.resolved_at)).filter(h=>h!==null);
+  const avg=times.length?times.reduce((a,b)=>a+b,0)/times.length:null;
+  const today=new Date().toDateString();
+  const closedToday=TICKETS.filter(t=>t.resolved_at&&new Date(t.resolved_at).toDateString()===today);
+  document.getElementById('kpiRow').innerHTML=[
+    {num:open.length,lab:'Tickets abiertos',cls:open.length>0?'warn':'ok'},
+    {num:critical.length,lab:'Prioridad crítica',cls:critical.length>0?'crit':'ok'},
+    {num:TICKETS.length,lab:'Total histórico',cls:''},
+    {num:closedToday.length,lab:'Resueltos hoy',cls:'ok'},
+    {num:avg!==null?fmtHours(avg):'—',lab:'Tiempo prom. resolución',cls:''},
+  ].map(k=>`<div class="kpi ${k.cls}">${pixelPeak()}<div class="num">${k.num}</div><div class="lab">${k.lab}</div></div>`).join('');
+  const sorted=open.slice().sort((a,b)=>priorityWeight(b.priority)-priorityWeight(a.priority));
+  document.getElementById('dashOpenTable').innerHTML=sorted.slice(0,8).map(t=>`
+    <tr onclick="window.__openTicket('${t.id}')">
+      <td class="ticket-id">${t.id}</td><td>${escapeHtml(t.requester)}</td>
+      <td>${escapeHtml(t.department)}</td>
+      <td><span class="pill pr-${slugify(t.priority)}">${t.priority}</span></td>
+      <td><span class="pill st-${slugify(t.status)}">${t.status}</span></td>
+      <td>${escapeHtml(t.technician||'Sin asignar')}</td>
+    </tr>`).join('')||`<tr class="empty-row"><td colspan="6">No hay tickets abiertos.</td></tr>`;
+}
+
+/* ---- TICKETS TABLE ---- */
+let sortState={key:'created_at',dir:-1};
+function populateFilterTech(){
+  const sel=document.getElementById('filterTech');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">Todos</option>'+TECHS.map(t=>`<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`).join('');
+  sel.value=cur;
+}
+function getFiltered(){
+  const q=document.getElementById('searchInput').value.trim().toLowerCase();
+  const fS=document.getElementById('filterStatus').value;
+  const fP=document.getElementById('filterPriority').value;
+  const fT=document.getElementById('filterTech').value;
+  return TICKETS.filter(t=>{
+    if(fS&&t.status!==fS) return false;
+    if(fP&&t.priority!==fP) return false;
+    if(fT&&t.technician!==fT) return false;
+    if(q&&!`${t.id} ${t.requester} ${t.department} ${t.description}`.toLowerCase().includes(q)) return false;
+    return true;
+  }).sort((a,b)=>{
+    let av=a[sortState.key],bv=b[sortState.key];
+    if(sortState.key==='priority'){av=priorityWeight(av);bv=priorityWeight(bv);}
+    av=av??'';bv=bv??'';
+    return av<bv?-sortState.dir:av>bv?sortState.dir:0;
+  });
+}
+function renderTicketsTable(){
+  populateFilterTech();
+  const list=getFiltered();
+  document.getElementById('ticketsTableBody').innerHTML=list.map(t=>`
+    <tr onclick="window.__openTicket('${t.id}')">
+      <td class="ticket-id">${t.id}</td><td>${escapeHtml(t.requester)}</td>
+      <td>${escapeHtml(t.department)}</td>
+      <td><span class="pill pr-${slugify(t.priority)}">${t.priority}</span></td>
+      <td><span class="pill st-${slugify(t.status)}">${t.status}</span></td>
+      <td>${escapeHtml(t.technician||'Sin asignar')}</td>
+      <td>${fmtDateTime(t.created_at)}</td><td>${fmtDateTime(t.resolved_at)}</td>
+    </tr>`).join('')||`<tr class="empty-row"><td colspan="8">No hay tickets que coincidan.</td></tr>`;
+}
+function setupTicketTableEvents(){
+  document.getElementById('searchInput').addEventListener('input',renderTicketsTable);
+  document.getElementById('filterStatus').addEventListener('change',renderTicketsTable);
+  document.getElementById('filterPriority').addEventListener('change',renderTicketsTable);
+  document.getElementById('filterTech').addEventListener('change',()=>{
+    renderTicketsTable();
+    document.getElementById('reportBtn').disabled=!document.getElementById('filterTech').value;
+  });
+  document.querySelectorAll('th[data-sort]').forEach(th=>{
+    th.addEventListener('click',()=>{
+      const k=th.dataset.sort;
+      if(sortState.key===k) sortState.dir*=-1; else{sortState.key=k;sortState.dir=1;}
+      renderTicketsTable();
+    });
+  });
+  document.getElementById('reportBtn').addEventListener('click',generateReport);
+  document.getElementById('teamReportBtn').addEventListener('click',generateTeamReport);
+}
+
+function generateReport(){
+  const name=document.getElementById('filterTech').value;
+  if(!name) return;
+  const list=TICKETS.filter(t=>t.technician===name);
+  const resolved=list.filter(t=>t.resolved_at);
+  const times=resolved.map(t=>hoursBetween(t.created_at,t.resolved_at)).filter(h=>h!==null);
+  const avg=times.length?times.reduce((a,b)=>a+b,0)/times.length:null;
+  const now=new Date().toLocaleString('es-MX',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const rows=list.map(t=>`<tr><td>${escapeHtml(t.id)}</td><td>${escapeHtml(t.requester)}</td><td>${escapeHtml(t.department)}</td><td>${escapeHtml(t.priority)}</td><td>${escapeHtml(t.status)}</td><td>${fmtDateTime(t.created_at)}</td><td>${fmtDateTime(t.resolved_at)}</td><td>${t.resolved_at?fmtHours(hoursBetween(t.created_at,t.resolved_at)):'—'}</td></tr>`).join('');
+  const html=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Reporte — ${name}</title><style>body{font-family:Arial,sans-serif;font-size:12px;padding:30px;}h1{font-size:18px;margin-bottom:2px;}.sub{color:#666;margin-bottom:18px;font-size:11px;}.kpis{display:flex;gap:30px;margin-bottom:20px;}.kpi .n{font-size:26px;font-weight:bold;line-height:1;}.kpi .l{font-size:10px;color:#666;text-transform:uppercase;}table{width:100%;border-collapse:collapse;font-size:11px;}th{background:#111;color:#fff;padding:6px 8px;text-align:left;font-size:10px;text-transform:uppercase;}td{padding:6px 8px;border-bottom:1px solid #ddd;}tr:nth-child(even) td{background:#f7f7f5;}.footer{margin-top:18px;font-size:10px;color:#888;}</style></head><body>
+  <h1>Reporte — ${escapeHtml(name)}</h1><div class="sub">Generado el ${now} | Mesa de Ayuda · Secretaría del Trabajo</div>
+  <div class="kpis"><div class="kpi"><div class="n">${list.length}</div><div class="l">Total asignados</div></div><div class="kpi"><div class="n">${resolved.length}</div><div class="l">Resueltos</div></div><div class="kpi"><div class="n">${list.length-resolved.length}</div><div class="l">Abiertos/en proceso</div></div><div class="kpi"><div class="n">${avg!==null?fmtHours(avg):'—'}</div><div class="l">Tiempo prom.</div></div></div>
+  <table><thead><tr><th>Folio</th><th>Solicitante</th><th>Depto.</th><th>Prioridad</th><th>Estado</th><th>Solicitado</th><th>Resuelto</th><th>Tiempo</th></tr></thead><tbody>${rows||'<tr><td colspan="8" style="text-align:center;padding:20px;color:#999;">Sin tickets asignados</td></tr>'}</tbody></table>
+  <div class="footer">Mesa de Ayuda · Secretaría del Trabajo — Reporte individual</div><script>window.print();<\/script></body></html>`;
+  const w=window.open('','_blank');w.document.write(html);w.document.close();
+}
+
+function generateTeamReport(){
+  const real=TECHS.filter(t=>!isProtectedName(t.name));
+  const monthSel=document.getElementById('teamReportMonth');
+  const monthVal=monthSel.value;
+  const periodLabel=monthVal==='all'?'Todo el histórico':monthSel.options[monthSel.selectedIndex].textContent;
+  const scoped=monthVal==='all'?TICKETS:TICKETS.filter(t=>t.created_at&&t.created_at.slice(0,7)===monthVal);
+  const now=new Date().toLocaleString('es-MX',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const rows=real.map(({name})=>{
+    const own=scoped.filter(t=>t.technician===name);
+    const resolved=own.filter(t=>t.resolved_at);
+    const times=resolved.map(t=>hoursBetween(t.created_at,t.resolved_at)).filter(h=>h!==null);
+    const avg=times.length?times.reduce((a,b)=>a+b,0)/times.length:null;
+    const crit=own.filter(t=>t.priority==='Crítica').length;
+    return {name,total:own.length,resolved:resolved.length,open:own.length-resolved.length,avg,crit};
+  }).sort((a,b)=>b.resolved-a.resolved);
+  const teamTotal={
+    total:rows.reduce((s,r)=>s+r.total,0),
+    resolved:rows.reduce((s,r)=>s+r.resolved,0),
+    open:rows.reduce((s,r)=>s+r.open,0),
+    crit:rows.reduce((s,r)=>s+r.crit,0)
+  };
+  const allTimes=scoped.filter(t=>real.some(r=>r.name===t.technician)&&t.resolved_at).map(t=>hoursBetween(t.created_at,t.resolved_at)).filter(h=>h!==null);
+  const teamAvg=allTimes.length?allTimes.reduce((a,b)=>a+b,0)/allTimes.length:null;
+  const bodyRows=rows.map(r=>`<tr><td>${escapeHtml(r.name)}</td><td>${r.total}</td><td>${r.resolved}</td><td>${r.open}</td><td>${r.avg!==null?fmtHours(r.avg):'—'}</td><td>${r.crit}</td></tr>`).join('');
+  const html=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Reporte comparativo — Mesa de Ayuda</title><style>body{font-family:Arial,sans-serif;font-size:12px;padding:30px;}h1{font-size:18px;margin-bottom:2px;}.sub{color:#666;margin-bottom:18px;font-size:11px;}.kpis{display:flex;gap:30px;margin-bottom:20px;}.kpi .n{font-size:26px;font-weight:bold;line-height:1;}.kpi .l{font-size:10px;color:#666;text-transform:uppercase;}table{width:100%;border-collapse:collapse;font-size:11px;}th{background:#111;color:#fff;padding:6px 8px;text-align:left;font-size:10px;text-transform:uppercase;}td{padding:6px 8px;border-bottom:1px solid #ddd;}tr:nth-child(even) td{background:#f7f7f5;}tfoot td{font-weight:bold;border-top:2px solid #111;background:#f0f0ee;}.footer{margin-top:18px;font-size:10px;color:#888;}</style></head><body>
+  <h1>Reporte comparativo por colaborador</h1><div class="sub">Periodo: ${escapeHtml(periodLabel)} · Generado el ${now} | Mesa de Ayuda · Secretaría del Trabajo</div>
+  <div class="kpis"><div class="kpi"><div class="n">${real.length}</div><div class="l">Colaboradores</div></div><div class="kpi"><div class="n">${teamTotal.resolved}</div><div class="l">Total resueltos</div></div><div class="kpi"><div class="n">${teamTotal.open}</div><div class="l">Total abiertos/proceso</div></div><div class="kpi"><div class="n">${teamAvg!==null?fmtHours(teamAvg):'—'}</div><div class="l">Tiempo prom. equipo</div></div></div>
+  <table><thead><tr><th>Colaborador</th><th>Asignados</th><th>Resueltos</th><th>Abiertos/Proceso</th><th>Tiempo prom.</th><th>Críticos</th></tr></thead>
+  <tbody>${bodyRows||'<tr><td colspan="6" style="text-align:center;padding:20px;color:#999;">Sin colaboradores registrados</td></tr>'}</tbody>
+  <tfoot><tr><td>Total equipo</td><td>${teamTotal.total}</td><td>${teamTotal.resolved}</td><td>${teamTotal.open}</td><td>${teamAvg!==null?fmtHours(teamAvg):'—'}</td><td>${teamTotal.crit}</td></tr></tfoot></table>
+  <div class="footer">Mesa de Ayuda · Secretaría del Trabajo — Reporte comparativo de equipo</div><script>window.print();<\/script></body></html>`;
+  const w=window.open('','_blank');w.document.write(html);w.document.close();
+}
+
+/* ---- MODAL: nuevo ticket (admin) ---- */
+function openNewTicketModal(){
+  const techOpts=TECHS.map(t=>`<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`).join('');
+  const modal=document.getElementById('ticketModal');
+  modal.innerHTML=`
+    <button class="modal-close" id="closeModalBtn">&times;</button>
+    <h3>Nuevo ticket</h3>
+    <div class="modal-sub">Captura los datos tal como llegaron en la solicitud</div>
+    <div class="field"><label>Usuario solicitante</label>
+      <select id="reqSelect">
+        <option value="">— Seleccionar usuario existente —</option>
+        ${REQUESTERS.map(r=>`<option value="${escapeHtml(r.name)}" data-dept="${escapeHtml(r.department)}">${escapeHtml(r.name)} (${escapeHtml(r.department)})</option>`).join('')}
+        <option value="__new__">+ Usuario nuevo…</option>
+      </select>
+      <div id="newReqFields" style="display:none;margin-top:10px;">
+        <input type="text" id="newReqName" placeholder="Nombre completo" style="margin-bottom:8px;">
+        <select id="newReqDept"><option value="">Departamento</option>${DEPTS.map(d=>`<option>${escapeHtml(d.name)}</option>`).join('')}</select>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Departamento</label><input type="text" id="reqDeptDisplay" disabled placeholder="Se completa al elegir usuario"></div>
+      <div class="field"><label>Prioridad</label><select id="newPriority"><option>Baja</option><option selected>Media</option><option>Alta</option><option>Crítica</option></select></div>
+    </div>
+    <div class="field"><label>Descripción del problema</label><textarea id="newDescription" rows="4" placeholder="Describe el problema reportado…"></textarea></div>
+    <div class="grid2">
+      <div class="field"><label>Fecha y hora de la solicitud</label><input type="datetime-local" id="newCreatedAt"></div>
+      <div class="field"><label>Colaborador asignado (opcional)</label><select id="newTechnician"><option value="">Sin asignar</option>${techOpts}</select></div>
+    </div>
+    <hr class="divider">
+    <div class="btn-row"><button class="btn" id="saveNewTicketBtn">Guardar ticket</button><button class="btn secondary" id="cancelNewTicketBtn">Cancelar</button></div>`;
+  document.getElementById('newCreatedAt').value=nowLocalInputValue();
+  document.getElementById('reqSelect').addEventListener('change',e=>{
+    const v=e.target.value;
+    document.getElementById('newReqFields').style.display=v==='__new__'?'block':'none';
+    document.getElementById('reqDeptDisplay').value=v&&v!=='__new__'?(e.target.selectedOptions[0].dataset.dept||''):'';
+  });
+  document.getElementById('closeModalBtn').addEventListener('click',closeModal);
+  document.getElementById('cancelNewTicketBtn').addEventListener('click',closeModal);
+  document.getElementById('saveNewTicketBtn').addEventListener('click',saveNewTicket);
+  openModal();
+}
+async function saveNewTicket(){
+  const sel=document.getElementById('reqSelect');
+  let requester='',department='';
+  if(sel.value==='__new__'){
+    requester=toTitleCase(document.getElementById('newReqName').value.trim());
+    department=document.getElementById('newReqDept').value;
+    if(!requester){showToast('Escribe el nombre del usuario nuevo');return;}
+    if(!department){showToast('Selecciona el departamento');return;}
+    if(!REQUESTERS.some(r=>r.name.toLowerCase()===requester.toLowerCase())){
+      setSyncDot('busy'); await sbPost('requesters',{name:requester,department}); REQUESTERS.push({name:requester,department}); setSyncDot('ok');
+    }
+  } else if(!sel.value){showToast('Selecciona o agrega un usuario');return;}
+  else{requester=sel.value;department=sel.selectedOptions[0].dataset.dept||'';}
+  const description=document.getElementById('newDescription').value.trim();
+  if(!description){showToast('Describe el problema');return;}
+  const createdRaw=document.getElementById('newCreatedAt').value;
+  if(!createdRaw){showToast('Indica la fecha y hora');return;}
+  setSyncDot('busy');
+  const id=await nextId();
+  const ticket={id,requester,department,description,priority:document.getElementById('newPriority').value,status:'Abierto',technician:document.getElementById('newTechnician').value||'',created_at:new Date(createdRaw).toISOString(),resolved_at:null,log:[{at:new Date().toISOString(),text:'Ticket creado'}]};
+  await sbPost('tickets',ticket);
+  TICKETS.unshift(ticket);
+  setSyncDot('ok');
+  sendTicketEmail(ticket);
+  closeModal();
+  showToast(`Ticket ${id} registrado`);
+  refreshAllViews();
+}
+
+/* ---- Sincronizar catálogo maestro de solicitantes al corregir datos en un ticket ---- */
+async function syncRequesterCatalog(oldName,newName,newDept){
+  const oldLower=(oldName||'').toLowerCase();
+  const newLower=(newName||'').toLowerCase();
+  const oldRecord=REQUESTERS.find(r=>r.name.toLowerCase()===oldLower);
+  const conflictRecord=REQUESTERS.find(r=>r.name.toLowerCase()===newLower&&r.name.toLowerCase()!==oldLower);
+  if(conflictRecord){
+    // Ya existe otro solicitante distinto con ese nombre exacto: no fusionamos identidades automáticamente.
+    return{status:'conflict'};
+  }
+  if(oldRecord){
+    if(oldRecord.name!==newName||oldRecord.department!==newDept){
+      await sbPatch('requesters',{name:oldRecord.name},{name:newName,department:newDept});
+      oldRecord.name=newName;oldRecord.department=newDept;
+    }
+    return{status:'updated'};
+  }
+  if(!REQUESTERS.some(r=>r.name.toLowerCase()===newLower)){
+    await sbPost('requesters',{name:newName,department:newDept});
+    REQUESTERS.push({name:newName,department:newDept});
+    return{status:'created'};
+  }
+  return{status:'noop'};
+}
+
+/* ---- MODAL: detalle ticket (admin) ---- */
+function openTicketDetail(id){
+  const t=TICKETS.find(x=>x.id===id);
+  if(!t) return;
+  const techOpts=TECHS.map(tech=>`<option value="${escapeHtml(tech.name)}" ${tech.name===t.technician?'selected':''}>${escapeHtml(tech.name)}</option>`).join('');
+  const statusOpts=['Abierto','En proceso','Resuelto','Cerrado'].map(s=>`<option ${s===t.status?'selected':''}>${s}</option>`).join('');
+  const priorityOpts=['Baja','Media','Alta','Crítica'].map(p=>`<option ${p===t.priority?'selected':''}>${p}</option>`).join('');
+  const deptOpts=DEPTS.map(d=>`<option ${d.name===t.department?'selected':''}>${escapeHtml(d.name)}</option>`).join('');
+  const resTime=t.resolved_at?hoursBetween(t.created_at,t.resolved_at):null;
+  document.getElementById('ticketModal').innerHTML=`
+    <button class="modal-close" id="closeModalBtn">&times;</button>
+    <h3>${t.id}</h3>
+    <div class="modal-sub">Datos del solicitante editables por el administrador</div>
+    <div class="grid2">
+      <div class="field"><label>Solicitante</label><input type="text" id="editRequester" value="${escapeHtml(t.requester)}"></div>
+      <div class="field"><label>Departamento</label><select id="editDepartment">${deptOpts}</select></div>
+    </div>
+    <div class="ticket-detail-meta">
+      <div class="m"><div class="l">Solicitado</div>${fmtDateTime(t.created_at)}</div>
+      <div class="m"><div class="l">Resuelto</div>${t.resolved_at?fmtDateTime(t.resolved_at):'—'}</div>
+      <div class="m"><div class="l">Tiempo de respuesta</div>${resTime!==null?fmtHours(resTime):'—'}</div>
+    </div>
+    <div class="field"><label>Descripción del problema</label><textarea id="editDescription" rows="4">${escapeHtml(t.description)}</textarea></div>
+    <div class="grid3">
+      <div class="field"><label>Prioridad</label><select id="editPriority">${priorityOpts}</select></div>
+      <div class="field"><label>Estado</label><select id="editStatus">${statusOpts}</select></div>
+      <div class="field"><label>Colaborador asignado</label><select id="editTechnician"><option value="">Sin asignar</option>${techOpts}</select></div>
+    </div>
+    <div id="resolveFields" style="display:none;">
+      <div class="field"><label>Fecha y hora de resolución</label><input type="datetime-local" id="editResolvedAt"></div>
+    </div>
+    <hr class="divider">
+    <div class="btn-row">
+      <button class="btn" id="saveTicketEditBtn">Guardar cambios</button>
+      <button class="btn secondary" id="closeModalBtn2">Cerrar</button>
+      <button class="btn danger" id="deleteTicketBtn" style="margin-left:auto;">Eliminar</button>
+    </div>`;
+
+  const statusSel=document.getElementById('editStatus');
+  const resolveFields=document.getElementById('resolveFields');
+  const editResolvedAt=document.getElementById('editResolvedAt');
+  function toggleResolveFields(){
+    const isResolved=statusSel.value==='Resuelto'||statusSel.value==='Cerrado';
+    resolveFields.style.display=isResolved?'block':'none';
+    if(isResolved&&!editResolvedAt.value){
+      const d=t.resolved_at?new Date(t.resolved_at):new Date();
+      d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
+      editResolvedAt.value=d.toISOString().slice(0,16);
+    }
+    if(!isResolved) editResolvedAt.value='';
+  }
+  toggleResolveFields();
+  statusSel.addEventListener('change',toggleResolveFields);
+  document.getElementById('closeModalBtn').addEventListener('click',closeModal);
+  document.getElementById('closeModalBtn2').addEventListener('click',closeModal);
+  document.getElementById('saveTicketEditBtn').addEventListener('click',async()=>{
+    const newStatus=statusSel.value;
+    const newRequester=toTitleCase(document.getElementById('editRequester').value.trim());
+    const newDescription=document.getElementById('editDescription').value.trim();
+    if(!newRequester){showToast('El solicitante no puede quedar vacío');return;}
+    if(!newDescription){showToast('La descripción no puede quedar vacía');return;}
+    const updates={
+      requester:newRequester,
+      department:document.getElementById('editDepartment').value,
+      description:newDescription,
+      priority:document.getElementById('editPriority').value,
+      status:newStatus,
+      technician:document.getElementById('editTechnician').value||''
+    };
+    if(newStatus==='Resuelto'||newStatus==='Cerrado'){
+      const rv=editResolvedAt.value;
+      updates.resolved_at=rv?new Date(rv).toISOString():(t.resolved_at||new Date().toISOString());
+    } else {updates.resolved_at=null;}
+    const changeNotes=[];
+    const requesterChanged=newRequester!==t.requester;
+    const deptChanged=updates.department!==t.department;
+    if(requesterChanged) changeNotes.push(`Solicitante corregido a "${newRequester}"`);
+    if(deptChanged) changeNotes.push(`Depto. corregido a "${updates.department}"`);
+    if(newDescription!==t.description) changeNotes.push('Descripción editada');
+    changeNotes.push(`Actualizado: ${newStatus}`);
+    updates.log=[...(t.log||[]),{at:new Date().toISOString(),text:changeNotes.join(' · ')}];
+    setSyncDot('busy');
+    let catalogResult=null;
+    if(requesterChanged||deptChanged){
+      catalogResult=await syncRequesterCatalog(t.requester,newRequester,updates.department);
+    }
+    await sbPatch('tickets',{id:t.id},updates); Object.assign(t,updates); setSyncDot('ok');
+    closeModal(); refreshAllViews();
+    if(catalogResult&&catalogResult.status==='conflict'){
+      showToast(`Ticket ${t.id} actualizado. Aviso: ya existe otro solicitante con ese nombre, revisa el catálogo`);
+    } else {
+      showToast(`Ticket ${t.id} actualizado`);
+    }
+  });
+  document.getElementById('deleteTicketBtn').addEventListener('click',async()=>{
+    if(!confirm(`¿Eliminar definitivamente el ticket ${t.id}?`)) return;
+    setSyncDot('busy'); await sbDelete('tickets',{id:t.id}); TICKETS=TICKETS.filter(x=>x.id!==t.id); setSyncDot('ok');
+    closeModal(); showToast(`Ticket ${t.id} eliminado`); refreshAllViews();
+  });
+  openModal();
+}
+window.__openTicket=openTicketDetail;
+
+function openModal(){document.getElementById('ticketOverlay').classList.add('active');}
+function closeModal(){document.getElementById('ticketOverlay').classList.remove('active');}
+
+/* ---- METRICS ---- */
+function populateReportMonths(){
+  const sel=document.getElementById('teamReportMonth');
+  const prevValue=sel.value;
+  const now=new Date();
+  const currentMonth=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const months=new Set(TICKETS.map(t=>t.created_at?t.created_at.slice(0,7):null).filter(Boolean));
+  months.add(currentMonth);
+  const sorted=Array.from(months).sort().reverse();
+  const fmt=ym=>{
+    const [y,m]=ym.split('-');
+    const label=new Date(Number(y),Number(m)-1,1).toLocaleDateString('es-MX',{month:'long',year:'numeric'});
+    return label.charAt(0).toUpperCase()+label.slice(1);
+  };
+  sel.innerHTML='<option value="all">Todo el histórico</option>'+sorted.map(ym=>`<option value="${ym}">${fmt(ym)}</option>`).join('');
+  sel.value=(prevValue&&Array.from(sel.options).some(o=>o.value===prevValue))?prevValue:currentMonth;
+}
+function renderMetrics(){
+  populateReportMonths();
+  const real=TECHS.filter(t=>!isProtectedName(t.name));
+  if(!real.length){document.getElementById('metricsContainer').innerHTML=`<div class="panel"><p style="margin:0;color:#6b6358;font-family:var(--mono);font-size:12.5px;">Agrega colaboradores en Catálogos para ver sus métricas.</p></div>`;return;}
+  const maxRes=Math.max(1,...real.map(t=>TICKETS.filter(k=>k.technician===t.name&&k.resolved_at).length));
+  document.getElementById('metricsContainer').innerHTML=real.map(({name})=>{
+    const own=TICKETS.filter(t=>t.technician===name);
+    const resolved=own.filter(t=>t.resolved_at);
+    const times=resolved.map(t=>hoursBetween(t.created_at,t.resolved_at)).filter(h=>h!==null);
+    const avg=times.length?times.reduce((a,b)=>a+b,0)/times.length:null;
+    const pct=Math.round(resolved.length/maxRes*100);
+    return `<div class="tech-card"><div class="row1"><div class="name">${escapeHtml(name)}</div><div class="small-note" style="margin:0;">${own.length} ticket${own.length!==1?'s':''} asignados</div></div>
+      <div class="stat-grid">
+        <div class="stat"><div class="v">${resolved.length}</div><div class="l">Resueltos</div></div>
+        <div class="stat"><div class="v">${own.length-resolved.length}</div><div class="l">Abiertos/proceso</div></div>
+        <div class="stat"><div class="v">${avg!==null?fmtHours(avg):'—'}</div><div class="l">Tiempo prom.</div></div>
+        <div class="stat"><div class="v">${own.filter(t=>t.priority==='Crítica').length}</div><div class="l">Críticos</div></div>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;"></div></div>
+    </div>`;
+  }).join('');
+}
+
+/* ---- CATALOGS ---- */
+function renderCatalogs(){
+  renderTechList();renderDeptList();renderUserList();
+  const sel=document.getElementById('newUserDept');
+  sel.innerHTML='<option value="">Departamento</option>'+DEPTS.map(d=>`<option>${escapeHtml(d.name)}</option>`).join('');
+}
+function renderTechList(){
+  document.getElementById('techList').innerHTML=TECHS.map(({name})=>{
+    const used=TICKETS.filter(t=>t.technician===name).length;
+    const btn=isProtectedName(name)?'':` <button class="remove-btn" data-name="${escapeHtml(name)}">Quitar</button>`;
+    return `<li><span>${escapeHtml(name)} <span class="tag">(${used} ticket${used!==1?'s':''})</span></span>${btn}</li>`;
+  }).join('');
+  document.querySelectorAll('#techList .remove-btn').forEach(btn=>{
+    btn.addEventListener('click',async()=>{
+      const name=btn.dataset.name;
+      if(TICKETS.some(t=>t.technician===name)){showToast('No se puede quitar: tiene tickets asignados');return;}
+      setSyncDot('busy');await sbDelete('technicians',{name});TECHS=TECHS.filter(t=>t.name!==name);setSyncDot('ok');
+      renderCatalogs();showToast(`"${name}" eliminado`);
+    });
+  });
+}
+function renderDeptList(){
+  document.getElementById('deptList').innerHTML=DEPTS.map(({name})=>{
+    const used=TICKETS.filter(t=>t.department===name).length;
+    const btn=isProtectedName(name)?'':` <button class="remove-btn" data-name="${escapeHtml(name)}">Quitar</button>`;
+    return `<li><span>${escapeHtml(name)} <span class="tag">(${used} ticket${used!==1?'s':''})</span></span>${btn}</li>`;
+  }).join('');
+  document.querySelectorAll('#deptList .remove-btn').forEach(btn=>{
+    btn.addEventListener('click',async()=>{
+      const name=btn.dataset.name;
+      if(TICKETS.some(t=>t.department===name)||REQUESTERS.some(r=>r.department===name)){showToast('No se puede quitar: está en uso');return;}
+      setSyncDot('busy');await sbDelete('departments',{name});DEPTS=DEPTS.filter(d=>d.name!==name);setSyncDot('ok');
+      renderCatalogs();showToast(`"${name}" eliminado`);
+    });
+  });
+}
+function renderUserList(){
+  document.getElementById('userList').innerHTML=REQUESTERS.map(({name,department})=>{
+    const used=TICKETS.filter(t=>t.requester===name).length;
+    return `<li><span>${escapeHtml(name)} <span class="tag">(${escapeHtml(department)} · ${used} ticket${used!==1?'s':''})</span></span><button class="remove-btn" data-name="${escapeHtml(name)}">Quitar</button></li>`;
+  }).join('');
+  document.querySelectorAll('#userList .remove-btn').forEach(btn=>{
+    btn.addEventListener('click',async()=>{
+      const name=btn.dataset.name;
+      if(TICKETS.some(t=>t.requester===name)){showToast('No se puede quitar: tiene tickets registrados');return;}
+      setSyncDot('busy');await sbDelete('requesters',{name});REQUESTERS=REQUESTERS.filter(r=>r.name!==name);setSyncDot('ok');
+      renderCatalogs();showToast(`"${name}" eliminado`);
+    });
+  });
+}
+function setupCatalogEvents(){
+  async function addItem(inputId,list,table,makeObj,refresh,transform=n=>n){
+    const input=document.getElementById(inputId);
+    const name=transform(input.value.trim());
+    if(!name){showToast('Escribe un nombre');return;}
+    if(list.some(i=>(i.name||i).toLowerCase()===name.toLowerCase())){showToast('Ya existe');return;}
+    setSyncDot('busy');await sbPost(table,makeObj(name));list.push(makeObj(name));setSyncDot('ok');
+    input.value='';refresh();showToast(`"${name}" agregado`);
+  }
+  document.getElementById('addTechBtn').addEventListener('click',()=>addItem('newTechInput',TECHS,'technicians',n=>({name:n}),()=>renderCatalogs()));
+  document.getElementById('addDeptBtn').addEventListener('click',()=>addItem('newDeptInput',DEPTS,'departments',n=>({name:n}),()=>renderCatalogs(),toTitleCase));
+  document.getElementById('addUserBtn').addEventListener('click',async()=>{
+    const name=toTitleCase(document.getElementById('newUserInput').value.trim());
+    const dept=document.getElementById('newUserDept').value;
+    if(!name){showToast('Escribe el nombre del usuario');return;}
+    if(!dept){showToast('Selecciona un departamento');return;}
+    if(REQUESTERS.some(r=>r.name.toLowerCase()===name.toLowerCase())){showToast('Ya existe');return;}
+    setSyncDot('busy');await sbPost('requesters',{name,department:dept});REQUESTERS.push({name,department:dept});setSyncDot('ok');
+    document.getElementById('newUserInput').value='';renderCatalogs();showToast(`"${name}" agregado`);
+  });
+  [['newTechInput','addTechBtn'],['newDeptInput','addDeptBtn'],['newUserInput','addUserBtn']].forEach(([i,b])=>{
+    document.getElementById(i).addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();document.getElementById(b).click();}});
+  });
+}
+
+/* ---- NOTIFICACIONES ---- */
+let notifPermission='default';
+function playBeep(){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.connect(g);g.connect(ctx.destination);
+    o.type='sine';o.frequency.setValueAtTime(880,ctx.currentTime);
+    g.gain.setValueAtTime(0.4,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.6);
+    o.start();o.stop(ctx.currentTime+0.6);
+  }catch(e){}
+}
+function showDesktopNotif(ticket){
+  playBeep();
+  if(notifPermission!=='granted') return;
+  const n=new Notification('Nuevo ticket — Mesa de Ayuda',{
+    body:`${ticket.id} · ${ticket.requester}\n${ticket.description.slice(0,80)}${ticket.description.length>80?'…':''}`,
+    tag:ticket.id
+  });
+  n.onclick=()=>{
+    window.focus();
+    if(isAdmin){goToView('tickets');window.__openTicket(ticket.id);}
+    n.close();
+  };
+  setTimeout(()=>n.close(),8000);
+}
+
+/* ---- POLLING ---- */
+let pollingStarted=false;
+function startPolling(){
+  if(pollingStarted) return;
+  pollingStarted=true;
+  setInterval(async()=>{
+    try{
+      const[tc,d,r]=await Promise.all([sbGet('technicians'),sbGet('departments'),sbGet('requesters')]);
+      TECHS=tc;DEPTS=d;REQUESTERS=r;
+      if(isAdmin){
+        const ok=await ensureSession();
+        if(!ok){
+          isAdmin=false;SESSION=null;TICKETS=[];
+          document.getElementById('appShell').style.display='none';
+          showUserScreen();
+          showToast('Tu sesión expiró. Inicia sesión de nuevo.');
+          setSyncDot('err');
+          return;
+        }
+        const t=await sbGet('tickets');
+        const knownIds=new Set(TICKETS.map(x=>x.id));
+        const newTickets=t.filter(x=>!knownIds.has(x.id));
+        TICKETS=t;
+        refreshAllViews();
+        newTickets.filter(tk=>!MY_IDENTITY||!tk.technician||tk.technician===MY_IDENTITY).forEach(tk=>showDesktopNotif(tk));
+      }
+      setSyncDot('ok');
+    }catch(e){
+      setSyncDot('err');
+    }
+  },30000);
+}
+
+function refreshAllViews(){
+  const active=document.querySelector('.tab-btn.active')?.dataset.view;
+  renderDashboard();renderTicketsTable();
+  if(active==='metrics') renderMetrics();
+  if(active==='catalogs') renderCatalogs();
+}
+
+/* ---- INIT ---- */
+async function init(){
+  try{
+    await loadAll();
+  }catch(e){
+    document.querySelector('#loadingScreen .l2').textContent='Error al conectar con Supabase.';
+    console.error(e);return;
+  }
+  document.getElementById('loadingScreen').style.display='none';
+
+  // Eventos login
+  document.getElementById('adminLinkBtn').addEventListener('click',showLogin);
+  document.getElementById('loginCloseBtn').addEventListener('click',hideLogin);
+  document.getElementById('loginSubmitBtn').addEventListener('click',tryLogin);
+  document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter') tryLogin();});
+
+  // Eventos usuario
+  document.getElementById('ucSubmitBtn').addEventListener('click',submitUserTicket);
+  document.getElementById('ucHomeBtn').addEventListener('click',resetUserForm);
+
+  // Eventos admin shell
+  setupTabs();setupTicketTableEvents();setupCatalogEvents();
+  document.getElementById('openNewTicketBtn').addEventListener('click',openNewTicketModal);
+  document.getElementById('quickNewTicket').addEventListener('click',()=>{goToView('tickets');setTimeout(openNewTicketModal,50);});
+  document.getElementById('ticketOverlay').addEventListener('click',e=>{if(e.target.id==='ticketOverlay') closeModal();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape') closeModal();});
+  document.getElementById('logoutBtn').addEventListener('click',()=>{isAdmin=false;SESSION=null;TICKETS=[];showUserScreen();});
+  document.getElementById('identityBtn').addEventListener('click',openIdentityPicker);
+  document.getElementById('identityCloseBtn').addEventListener('click',hideIdentityPicker);
+  document.getElementById('identitySaveBtn').addEventListener('click',saveIdentity);
+  document.getElementById('identityOverlay').addEventListener('click',e=>{if(e.target.id==='identityOverlay') hideIdentityPicker();});
+  const notifSupported=typeof Notification!=='undefined';
+  document.getElementById('notifBtn').addEventListener('click',()=>{
+    if(!notifSupported){showToast('Tu navegador no soporta notificaciones de escritorio.');return;}
+    Notification.requestPermission().then(p=>{
+      notifPermission=p;
+      if(p==='granted'){document.getElementById('notifBtn').textContent='🔔 Notificaciones activas';document.getElementById('notifBtn').disabled=true;}
+      else showToast('Permiso denegado. Actívalo en la configuración del navegador.');
+    });
+  });
+  if(!notifSupported){
+    const nb=document.getElementById('notifBtn');
+    nb.textContent='🔕 Notificaciones no disponibles';nb.disabled=true;
+  } else if(Notification.permission==='granted'){
+    notifPermission='granted';document.getElementById('notifBtn').textContent='🔔 Notificaciones activas';document.getElementById('notifBtn').disabled=true;
+  }
+
+  tickClock();setInterval(tickClock,1000);
+  showUserScreen();
+  startPolling();
+}
+
+init();
+})();
+</script>
+</body>
+</html>
