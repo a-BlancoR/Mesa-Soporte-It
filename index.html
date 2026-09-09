@@ -178,7 +178,8 @@
 
 <div class="loading-screen" id="loadingScreen">
   <div class="l1">Mesa de Ayuda &middot; Secretaría del Trabajo</div>
-  <div class="l2">Conectando&hellip;</div>
+  <div class="l2" id="loadingText">Conectando&hellip;</div>
+  <button class="btn" id="loadingRetryBtn" style="display:none;margin-top:6px;">Reintentar</button>
 </div>
 
 <!-- PANTALLA USUARIO -->
@@ -416,7 +417,7 @@ let SESSION=null; // {access_token,refresh_token,expires_at} set on successful S
 async function refreshSession(){
   if(!SESSION||!SESSION.refresh_token) return false;
   try{
-    const r=await fetch(`${SB_URL}/auth/v1/token?grant_type=refresh_token`,{
+    const r=await fetchWithTimeout(`${SB_URL}/auth/v1/token?grant_type=refresh_token`,{
       method:'POST',
       headers:{'Content-Type':'application/json','apikey':SB_KEY},
       body:JSON.stringify({refresh_token:SESSION.refresh_token})
@@ -466,34 +467,53 @@ function buildQuery(params){
   const parts=Object.entries(params).map(([k,v])=>`${encodeURIComponent(k)}=${encodeURIComponent(v)}`);
   return parts.length?'?'+parts.join('&'):'';
 }
+// En redes móviles con señal débil un fetch puede quedarse esperando indefinidamente.
+// Este wrapper cancela la petición tras FETCH_TIMEOUT_MS y lanza un error claro en vez de colgarse.
+const FETCH_TIMEOUT_MS=12000;
+async function fetchWithTimeout(url,options={}){
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),FETCH_TIMEOUT_MS);
+  try{
+    return await fetch(url,{...options,signal:controller.signal});
+  }catch(e){
+    if(e.name==='AbortError') throw new Error('TIMEOUT: la conexión tardó demasiado. Verifica tu señal/datos móviles e intenta de nuevo.');
+    throw e;
+  }finally{
+    clearTimeout(timer);
+  }
+}
 async function sbGet(table,params){
   const order=table==='tickets'?'created_at.desc':'name.asc';
   const qs=buildQuery({...params,order});
-  const r=await fetch(`${SB_URL}/rest/v1/${table}${qs}`,{headers:{...getHeaders(),'Prefer':'return=representation'}});
+  const r=await fetchWithTimeout(`${SB_URL}/rest/v1/${table}${qs}`,{headers:{...getHeaders(),'Prefer':'return=representation'}});
   if(!r.ok) throw new Error(await r.text());
   return r.json();
 }
 async function sbPost(table,body,{representation=true}={}){
-  const r=await fetch(`${SB_URL}/rest/v1/${table}`,{method:'POST',headers:{...getHeaders(),'Prefer':representation?'return=representation':'return=minimal'},body:JSON.stringify(body)});
+  const r=await fetchWithTimeout(`${SB_URL}/rest/v1/${table}`,{method:'POST',headers:{...getHeaders(),'Prefer':representation?'return=representation':'return=minimal'},body:JSON.stringify(body)});
   if(!r.ok) throw new Error(await r.text());
   return representation?r.json():null;
 }
 async function sbPatch(table,match,body){
   const qs=buildQuery(Object.fromEntries(Object.entries(match).map(([k,v])=>[k,`eq.${v}`])));
-  const r=await fetch(`${SB_URL}/rest/v1/${table}${qs}`,{method:'PATCH',headers:{...getHeaders(),'Prefer':'return=representation'},body:JSON.stringify(body)});
+  const r=await fetchWithTimeout(`${SB_URL}/rest/v1/${table}${qs}`,{method:'PATCH',headers:{...getHeaders(),'Prefer':'return=representation'},body:JSON.stringify(body)});
   if(!r.ok) throw new Error(await r.text());
   return r.json();
 }
 async function sbDelete(table,match){
   const qs=buildQuery(Object.fromEntries(Object.entries(match).map(([k,v])=>[k,`eq.${v}`])));
-  const r=await fetch(`${SB_URL}/rest/v1/${table}${qs}`,{method:'DELETE',headers:getHeaders()});
+  const r=await fetchWithTimeout(`${SB_URL}/rest/v1/${table}${qs}`,{method:'DELETE',headers:getHeaders()});
   if(!r.ok) throw new Error(await r.text());
 }
 async function nextId(){
-  const r=await fetch(`${SB_URL}/rest/v1/rpc/nextval`,{method:'POST',headers:getHeaders(),body:JSON.stringify({sequence_name:'ticket_seq'})});
-  if(!r.ok) return `TK-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
-  const n=await r.json();
-  return `TK-${new Date().getFullYear()}-${String(n).padStart(4,'0')}`;
+  try{
+    const r=await fetchWithTimeout(`${SB_URL}/rest/v1/rpc/nextval`,{method:'POST',headers:getHeaders(),body:JSON.stringify({sequence_name:'ticket_seq'})});
+    if(!r.ok) return `TK-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
+    const n=await r.json();
+    return `TK-${new Date().getFullYear()}-${String(n).padStart(4,'0')}`;
+  }catch(e){
+    return `TK-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
+  }
 }
 
 let TICKETS=[],TECHS=[],DEPTS=[],REQUESTERS=[];
@@ -754,7 +774,7 @@ async function tryLogin(){
   if(!email||!pass){errBox.textContent='Ingresa correo y contraseña.';return;}
   errBox.textContent='';btn.disabled=true;btn.textContent='Verificando…';
   try{
-    const r=await fetch(`${SB_URL}/auth/v1/token?grant_type=password`,{
+    const r=await fetchWithTimeout(`${SB_URL}/auth/v1/token?grant_type=password`,{
       method:'POST',
       headers:{'Content-Type':'application/json','apikey':SB_KEY},
       body:JSON.stringify({email,password:pass})
@@ -1343,15 +1363,27 @@ function refreshAllViews(){
 }
 
 /* ---- INIT ---- */
-async function init(){
+async function attemptInitialLoad(){
+  const loadingText=document.getElementById('loadingText');
+  const retryBtn=document.getElementById('loadingRetryBtn');
+  retryBtn.style.display='none';
+  loadingText.textContent='Conectando…';
   try{
     await loadAll();
+    document.getElementById('loadingScreen').style.display='none';
+    startAppAfterLoad();
   }catch(e){
-    document.querySelector('#loadingScreen .l2').textContent='Error al conectar con Supabase.';
-    console.error(e);return;
+    console.error(e);
+    const isTimeout=/TIMEOUT/.test(e.message||'');
+    loadingText.textContent=isTimeout
+      ?'Tu conexión está muy lenta o inestable. Verifica tu señal/WiFi.'
+      :'No se pudo conectar. Verifica tu internet.';
+    retryBtn.style.display='inline-block';
   }
-  document.getElementById('loadingScreen').style.display='none';
+}
+document.getElementById('loadingRetryBtn').addEventListener('click',attemptInitialLoad);
 
+function startAppAfterLoad(){
   // Eventos login
   document.getElementById('adminLinkBtn').addEventListener('click',showLogin);
   document.getElementById('loginCloseBtn').addEventListener('click',hideLogin);
@@ -1394,7 +1426,7 @@ async function init(){
   startPolling();
 }
 
-init();
+attemptInitialLoad();
 })();
 </script>
 </body>
