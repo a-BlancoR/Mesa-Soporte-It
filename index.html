@@ -221,8 +221,8 @@
       </div>
 
       <div class="field">
-        <label>Puesto</label>
-        <input type="text" id="ucPuesto" placeholder="Tu puesto o cargo">
+        <label>Puesto *</label>
+        <input type="text" id="ucPuesto" placeholder="Tu puesto o cargo" required>
       </div>
 
       <div class="field">
@@ -238,8 +238,8 @@
       </div>
 
       <div class="field">
-        <label>Número de contacto</label>
-        <input type="tel" id="ucContacto" placeholder="Teléfono o extensión para contactarte">
+        <label>Número de contacto *</label>
+        <input type="tel" id="ucContacto" placeholder="Teléfono o extensión para contactarte" required>
       </div>
 
       <div class="btn-row">
@@ -716,12 +716,14 @@ async function submitUserTicket(){
   const description=document.getElementById('ucDescription').value.trim();
   if(!description){showToast('Describe el problema');return;}
 
+  const contacto=document.getElementById('ucContacto').value.trim();
+  if(!puesto||!contacto){showToast('Hacen falta completar campos');return;}
+
   const btn=document.getElementById('ucSubmitBtn');
   btn.disabled=true; btn.textContent='Enviando…';
 
   const id=await nextId();
   const tech=document.getElementById('ucTechSelect').value||'';
-  const contacto=document.getElementById('ucContacto').value.trim();
   const ticket={
     id,requester,department,description,puesto,contacto,
     priority:'Media',status:'Abierto',technician:tech,
@@ -753,10 +755,10 @@ function resetUserForm(){
       <select id="ucDeptSelect"><option value="">— Selecciona tu departamento —</option></select>
       <div id="ucNewDeptWrap" style="display:none;margin-top:8px;"><input type="text" id="ucNewDept" placeholder="Escribe el nombre de tu departamento"></div>
     </div>
-    <div class="field"><label>Puesto</label><input type="text" id="ucPuesto" placeholder="Tu puesto o cargo"></div>
+    <div class="field"><label>Puesto *</label><input type="text" id="ucPuesto" placeholder="Tu puesto o cargo" required></div>
     <div class="field"><label>Describe el problema</label><textarea id="ucDescription" rows="4" placeholder="Explica lo que está pasando con detalle…"></textarea></div>
     <div class="field"><label>Personal asignado sugerido (opcional)</label><select id="ucTechSelect"><option value="">Sin preferencia</option></select></div>
-    <div class="field"><label>Número de contacto</label><input type="tel" id="ucContacto" placeholder="Teléfono o extensión para contactarte"></div>
+    <div class="field"><label>Número de contacto *</label><input type="tel" id="ucContacto" placeholder="Teléfono o extensión para contactarte" required></div>
     <div class="btn-row"><button class="btn" id="ucSubmitBtn" style="width:100%;">Enviar solicitud</button></div>`;
   populateUserScreen();
   document.getElementById('ucSubmitBtn').addEventListener('click',submitUserTicket);
