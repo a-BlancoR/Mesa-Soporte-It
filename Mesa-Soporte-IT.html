@@ -15,6 +15,7 @@
     --sans:"Segoe UI","Helvetica Neue",Arial,sans-serif;
   }
   *{box-sizing:border-box;}
+  html,body{overflow-x:hidden;max-width:100%;}
   body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.45;}
   .shell{max-width:1280px;margin:0 auto;padding:0 28px 80px;}
   .inst-header{background:var(--accent);padding:0 28px 0 0;border-bottom:4px solid var(--accent);display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;position:relative;}
@@ -81,11 +82,12 @@
   .field{margin-bottom:16px;}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
   .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+  .grid2>*,.grid3>*{min-width:0;}
   @media(max-width:760px){.grid2,.grid3{grid-template-columns:1fr;}}
-  .panel{background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:22px;}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:22px;min-width:0;}
   .kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:26px;}
   @media(max-width:900px){.kpi-row{grid-template-columns:repeat(2,1fr);}}
-  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:16px 18px;position:relative;overflow:hidden;}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:16px 18px;position:relative;overflow:hidden;min-width:0;}
   .kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--gold);}
   .kpi.crit::before{background:var(--crit);}
   .kpi.warn::before{background:var(--warn);}
@@ -176,7 +178,8 @@
 
 <div class="loading-screen" id="loadingScreen">
   <div class="l1">Mesa de Ayuda &middot; Secretaría del Trabajo</div>
-  <div class="l2">Conectando&hellip;</div>
+  <div class="l2" id="loadingText">Conectando&hellip;</div>
+  <button class="btn" id="loadingRetryBtn" style="display:none;margin-top:6px;">Reintentar</button>
 </div>
 
 <!-- PANTALLA USUARIO -->
@@ -207,7 +210,7 @@
         </div>
       </div>
 
-      <div class="field" id="ucDeptField" style="display:none;">
+      <div class="field">
         <label>Departamento</label>
         <select id="ucDeptSelect">
           <option value="">— Selecciona tu departamento —</option>
@@ -217,9 +220,9 @@
         </div>
       </div>
 
-      <div class="field" id="ucDeptDisplay" style="display:none;">
-        <label>Departamento</label>
-        <input type="text" id="ucDeptText" disabled>
+      <div class="field">
+        <label>Puesto</label>
+        <input type="text" id="ucPuesto" placeholder="Tu puesto o cargo">
       </div>
 
       <div class="field">
@@ -232,6 +235,11 @@
         <select id="ucTechSelect">
           <option value="">Sin preferencia</option>
         </select>
+      </div>
+
+      <div class="field">
+        <label>Número de contacto</label>
+        <input type="tel" id="ucContacto" placeholder="Teléfono o extensión para contactarte">
       </div>
 
       <div class="btn-row">
@@ -308,10 +316,12 @@
         <h2 class="section-title"><span class="eyebrow">Resumen</span> Estado general</h2>
         <div class="kpi-row" id="kpiRow"></div>
         <div class="col3">
-          <div class="panel" style="grid-column:span 2;">
-            <h2 class="section-title" style="font-size:15px;">Tickets abiertos &amp; en proceso</h2>
-            <table><thead><tr><th>Folio</th><th>Solicitante</th><th>Depto.</th><th>Prioridad</th><th>Estado</th><th>Colaborador</th></tr></thead>
-            <tbody id="dashOpenTable"></tbody></table>
+          <div class="panel" style="grid-column:span 2;padding:22px 0 22px 22px;">
+            <h2 class="section-title" style="font-size:15px;padding-right:22px;">Tickets abiertos &amp; en proceso</h2>
+            <div style="overflow-x:auto;padding-right:22px;">
+              <table style="min-width:560px;"><thead><tr><th>Folio</th><th>Solicitante</th><th>Depto.</th><th>Prioridad</th><th>Estado</th><th>Colaborador</th></tr></thead>
+              <tbody id="dashOpenTable"></tbody></table>
+            </div>
           </div>
           <div class="panel">
             <h2 class="section-title" style="font-size:15px;">Acción rápida</h2>
@@ -387,6 +397,7 @@
             <div class="add-inline" style="flex-direction:column;gap:8px;">
               <input type="text" id="newUserInput" placeholder="Nombre del usuario">
               <select id="newUserDept"><option value="">Departamento</option></select>
+              <input type="text" id="newUserPuesto" placeholder="Puesto (opcional)">
               <button class="btn secondary" id="addUserBtn" style="width:100%;">Agregar usuario</button>
             </div>
           </div>
@@ -412,7 +423,7 @@ let SESSION=null; // {access_token,refresh_token,expires_at} set on successful S
 async function refreshSession(){
   if(!SESSION||!SESSION.refresh_token) return false;
   try{
-    const r=await fetch(`${SB_URL}/auth/v1/token?grant_type=refresh_token`,{
+    const r=await fetchWithTimeout(`${SB_URL}/auth/v1/token?grant_type=refresh_token`,{
       method:'POST',
       headers:{'Content-Type':'application/json','apikey':SB_KEY},
       body:JSON.stringify({refresh_token:SESSION.refresh_token})
@@ -446,6 +457,8 @@ async function sendTicketEmail(ticket){
           ticket_id: ticket.id,
           usuario: ticket.requester,
           departamento: ticket.department,
+          puesto: ticket.puesto||'',
+          contacto: ticket.contacto||'',
           descripcion: ticket.description,
           colaborador: ticket.technician||'Sin asignar',
           fecha: new Date(ticket.created_at).toLocaleString('es-MX',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})
@@ -462,34 +475,53 @@ function buildQuery(params){
   const parts=Object.entries(params).map(([k,v])=>`${encodeURIComponent(k)}=${encodeURIComponent(v)}`);
   return parts.length?'?'+parts.join('&'):'';
 }
+// En redes móviles con señal débil un fetch puede quedarse esperando indefinidamente.
+// Este wrapper cancela la petición tras FETCH_TIMEOUT_MS y lanza un error claro en vez de colgarse.
+const FETCH_TIMEOUT_MS=12000;
+async function fetchWithTimeout(url,options={}){
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),FETCH_TIMEOUT_MS);
+  try{
+    return await fetch(url,{...options,signal:controller.signal});
+  }catch(e){
+    if(e.name==='AbortError') throw new Error('TIMEOUT: la conexión tardó demasiado. Verifica tu señal/datos móviles e intenta de nuevo.');
+    throw e;
+  }finally{
+    clearTimeout(timer);
+  }
+}
 async function sbGet(table,params){
   const order=table==='tickets'?'created_at.desc':'name.asc';
   const qs=buildQuery({...params,order});
-  const r=await fetch(`${SB_URL}/rest/v1/${table}${qs}`,{headers:{...getHeaders(),'Prefer':'return=representation'}});
+  const r=await fetchWithTimeout(`${SB_URL}/rest/v1/${table}${qs}`,{headers:{...getHeaders(),'Prefer':'return=representation'}});
   if(!r.ok) throw new Error(await r.text());
   return r.json();
 }
 async function sbPost(table,body,{representation=true}={}){
-  const r=await fetch(`${SB_URL}/rest/v1/${table}`,{method:'POST',headers:{...getHeaders(),'Prefer':representation?'return=representation':'return=minimal'},body:JSON.stringify(body)});
+  const r=await fetchWithTimeout(`${SB_URL}/rest/v1/${table}`,{method:'POST',headers:{...getHeaders(),'Prefer':representation?'return=representation':'return=minimal'},body:JSON.stringify(body)});
   if(!r.ok) throw new Error(await r.text());
   return representation?r.json():null;
 }
 async function sbPatch(table,match,body){
   const qs=buildQuery(Object.fromEntries(Object.entries(match).map(([k,v])=>[k,`eq.${v}`])));
-  const r=await fetch(`${SB_URL}/rest/v1/${table}${qs}`,{method:'PATCH',headers:{...getHeaders(),'Prefer':'return=representation'},body:JSON.stringify(body)});
+  const r=await fetchWithTimeout(`${SB_URL}/rest/v1/${table}${qs}`,{method:'PATCH',headers:{...getHeaders(),'Prefer':'return=representation'},body:JSON.stringify(body)});
   if(!r.ok) throw new Error(await r.text());
   return r.json();
 }
 async function sbDelete(table,match){
   const qs=buildQuery(Object.fromEntries(Object.entries(match).map(([k,v])=>[k,`eq.${v}`])));
-  const r=await fetch(`${SB_URL}/rest/v1/${table}${qs}`,{method:'DELETE',headers:getHeaders()});
+  const r=await fetchWithTimeout(`${SB_URL}/rest/v1/${table}${qs}`,{method:'DELETE',headers:getHeaders()});
   if(!r.ok) throw new Error(await r.text());
 }
 async function nextId(){
-  const r=await fetch(`${SB_URL}/rest/v1/rpc/nextval`,{method:'POST',headers:getHeaders(),body:JSON.stringify({sequence_name:'ticket_seq'})});
-  if(!r.ok) return `TK-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
-  const n=await r.json();
-  return `TK-${new Date().getFullYear()}-${String(n).padStart(4,'0')}`;
+  try{
+    const r=await fetchWithTimeout(`${SB_URL}/rest/v1/rpc/nextval`,{method:'POST',headers:getHeaders(),body:JSON.stringify({sequence_name:'ticket_seq'})});
+    if(!r.ok) return `TK-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
+    const n=await r.json();
+    return `TK-${new Date().getFullYear()}-${String(n).padStart(4,'0')}`;
+  }catch(e){
+    return `TK-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
+  }
 }
 
 let TICKETS=[],TECHS=[],DEPTS=[],REQUESTERS=[];
@@ -605,7 +637,7 @@ function showUserScreen(){
 function populateUserScreen(){
   const sel=document.getElementById('ucUserSelect');
   sel.innerHTML='<option value="">— Selecciona tu nombre —</option>'+
-    REQUESTERS.map(r=>`<option value="${escapeHtml(r.name)}" data-dept="${escapeHtml(r.department)}">${escapeHtml(r.name)}</option>`).join('')+
+    REQUESTERS.map(r=>`<option value="${escapeHtml(r.name)}" data-dept="${escapeHtml(r.department)}" data-puesto="${escapeHtml(r.puesto||'')}">${escapeHtml(r.name)}</option>`).join('')+
     '<option value="__new__">+ Mi nombre no está en la lista</option>';
 
   const techSel=document.getElementById('ucTechSelect');
@@ -613,9 +645,12 @@ function populateUserScreen(){
     TECHS.filter(t=>!isProtectedName(t.name)).map(t=>`<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`).join('');
 
   const deptSel=document.getElementById('ucDeptSelect');
-  deptSel.innerHTML='<option value="">— Selecciona tu departamento —</option>'+
-    DEPTS.filter(d=>!isProtectedName(d.name)).map(d=>`<option>${escapeHtml(d.name)}</option>`).join('')+
-    '<option value="__new__">+ Agregar mi departamento</option>';
+  function renderDeptOptions(selectedValue){
+    deptSel.innerHTML='<option value="">— Selecciona tu departamento —</option>'+
+      DEPTS.filter(d=>!isProtectedName(d.name)).map(d=>`<option ${d.name===selectedValue?'selected':''}>${escapeHtml(d.name)}</option>`).join('')+
+      '<option value="__new__">+ Mi departamento no está en la lista</option>';
+  }
+  renderDeptOptions('');
   deptSel.onchange=()=>{
     document.getElementById('ucNewDeptWrap').style.display=deptSel.value==='__new__'?'block':'none';
   };
@@ -623,46 +658,60 @@ function populateUserScreen(){
   sel.onchange=()=>{
     const v=sel.value;
     const newWrap=document.getElementById('ucNewNameWrap');
-    const deptField=document.getElementById('ucDeptField');
-    const deptDisplay=document.getElementById('ucDeptDisplay');
+    const puestoInput=document.getElementById('ucPuesto');
     newWrap.style.display=v==='__new__'?'block':'none';
+    document.getElementById('ucNewDeptWrap').style.display='none';
     if(v&&v!=='__new__'){
       const dept=sel.selectedOptions[0].dataset.dept||'';
-      document.getElementById('ucDeptText').value=dept;
-      deptDisplay.style.display='block';
-      deptField.style.display='none';
-    } else if(v==='__new__'){
-      deptField.style.display='block';
-      deptDisplay.style.display='none';
+      // Preseleccionamos el departamento que ya tenía guardado, pero el usuario lo puede cambiar si está mal.
+      const existsInList=Array.from(deptSel.options).some(o=>o.value===dept);
+      renderDeptOptions(existsInList?dept:'');
+      if(puestoInput) puestoInput.value=sel.selectedOptions[0].dataset.puesto||'';
     } else {
-      deptField.style.display='none';
-      deptDisplay.style.display='none';
+      renderDeptOptions('');
+      if(puestoInput) puestoInput.value='';
     }
   };
 }
 
 async function submitUserTicket(){
   const sel=document.getElementById('ucUserSelect');
-  let requester='',department='';
-  if(sel.value==='__new__'){
+  const deptSel=document.getElementById('ucDeptSelect');
+  let requester='';
+  const isNewName=sel.value==='__new__';
+  const puesto=toTitleCase(document.getElementById('ucPuesto').value.trim());
+  if(isNewName){
     requester=toTitleCase(document.getElementById('ucNewName').value.trim());
-    department=document.getElementById('ucDeptSelect').value;
     if(!requester){showToast('Escribe tu nombre completo');return;}
-    if(!department){showToast('Selecciona tu departamento');return;}
-    if(department==='__new__'){
-      department=toTitleCase(document.getElementById('ucNewDept').value.trim());
-      if(!department){showToast('Escribe el nombre de tu departamento');return;}
-      if(!DEPTS.some(d=>d.name.toLowerCase()===department.toLowerCase())){
-        await sbPost('departments',{name:department});
-        DEPTS.push({name:department});
-      }
-    }
-    if(!REQUESTERS.some(r=>r.name.toLowerCase()===requester.toLowerCase())){
-      await sbPost('requesters',{name:requester,department});
-      REQUESTERS.push({name:requester,department});
-    }
   } else if(!sel.value){showToast('Selecciona tu nombre');return;}
-  else{requester=sel.value;department=sel.selectedOptions[0].dataset.dept||'';}
+  else{requester=sel.value;}
+
+  let department=deptSel.value;
+  if(!department){showToast('Selecciona tu departamento');return;}
+  if(department==='__new__'){
+    department=toTitleCase(document.getElementById('ucNewDept').value.trim());
+    if(!department){showToast('Escribe el nombre de tu departamento');return;}
+    if(!DEPTS.some(d=>d.name.toLowerCase()===department.toLowerCase())){
+      await sbPost('departments',{name:department});
+      DEPTS.push({name:department});
+    }
+  }
+
+  if(isNewName){
+    if(!REQUESTERS.some(r=>r.name.toLowerCase()===requester.toLowerCase())){
+      await sbPost('requesters',{name:requester,department,puesto});
+      REQUESTERS.push({name:requester,department,puesto});
+    }
+  } else {
+    // Si el usuario ya existía pero corrigió su departamento, también actualizamos el catálogo maestro.
+    const existing=REQUESTERS.find(r=>r.name.toLowerCase()===requester.toLowerCase());
+    if(existing&&existing.department!==department){
+      try{
+        await sbPatch('requesters',{name:existing.name},{department});
+        existing.department=department;
+      }catch(e){ console.error('No se pudo actualizar el catálogo de solicitantes:',e); }
+    }
+  }
 
   const description=document.getElementById('ucDescription').value.trim();
   if(!description){showToast('Describe el problema');return;}
@@ -672,8 +721,9 @@ async function submitUserTicket(){
 
   const id=await nextId();
   const tech=document.getElementById('ucTechSelect').value||'';
+  const contacto=document.getElementById('ucContacto').value.trim();
   const ticket={
-    id,requester,department,description,
+    id,requester,department,description,puesto,contacto,
     priority:'Media',status:'Abierto',technician:tech,
     created_at:new Date().toISOString(),resolved_at:null,
     log:[{at:new Date().toISOString(),text:'Ticket creado por usuario'}]
@@ -699,13 +749,14 @@ function resetUserForm(){
       <select id="ucUserSelect"><option value="">— Selecciona tu nombre —</option><option value="__new__">+ Mi nombre no está en la lista</option></select>
       <div id="ucNewNameWrap" style="display:none;margin-top:8px;"><input type="text" id="ucNewName" placeholder="Escribe tu nombre completo"></div>
     </div>
-    <div class="field" id="ucDeptField" style="display:none;"><label>Departamento</label>
+    <div class="field"><label>Departamento</label>
       <select id="ucDeptSelect"><option value="">— Selecciona tu departamento —</option></select>
       <div id="ucNewDeptWrap" style="display:none;margin-top:8px;"><input type="text" id="ucNewDept" placeholder="Escribe el nombre de tu departamento"></div>
     </div>
-    <div class="field" id="ucDeptDisplay" style="display:none;"><label>Departamento</label><input type="text" id="ucDeptText" disabled></div>
+    <div class="field"><label>Puesto</label><input type="text" id="ucPuesto" placeholder="Tu puesto o cargo"></div>
     <div class="field"><label>Describe el problema</label><textarea id="ucDescription" rows="4" placeholder="Explica lo que está pasando con detalle…"></textarea></div>
     <div class="field"><label>Personal asignado sugerido (opcional)</label><select id="ucTechSelect"><option value="">Sin preferencia</option></select></div>
+    <div class="field"><label>Número de contacto</label><input type="tel" id="ucContacto" placeholder="Teléfono o extensión para contactarte"></div>
     <div class="btn-row"><button class="btn" id="ucSubmitBtn" style="width:100%;">Enviar solicitud</button></div>`;
   populateUserScreen();
   document.getElementById('ucSubmitBtn').addEventListener('click',submitUserTicket);
@@ -750,7 +801,7 @@ async function tryLogin(){
   if(!email||!pass){errBox.textContent='Ingresa correo y contraseña.';return;}
   errBox.textContent='';btn.disabled=true;btn.textContent='Verificando…';
   try{
-    const r=await fetch(`${SB_URL}/auth/v1/token?grant_type=password`,{
+    const r=await fetchWithTimeout(`${SB_URL}/auth/v1/token?grant_type=password`,{
       method:'POST',
       headers:{'Content-Type':'application/json','apikey':SB_KEY},
       body:JSON.stringify({email,password:pass})
@@ -965,7 +1016,7 @@ function openNewTicketModal(){
     <div class="field"><label>Usuario solicitante</label>
       <select id="reqSelect">
         <option value="">— Seleccionar usuario existente —</option>
-        ${REQUESTERS.map(r=>`<option value="${escapeHtml(r.name)}" data-dept="${escapeHtml(r.department)}">${escapeHtml(r.name)} (${escapeHtml(r.department)})</option>`).join('')}
+        ${REQUESTERS.map(r=>`<option value="${escapeHtml(r.name)}" data-dept="${escapeHtml(r.department)}" data-puesto="${escapeHtml(r.puesto||'')}">${escapeHtml(r.name)} (${escapeHtml(r.department)})</option>`).join('')}
         <option value="__new__">+ Usuario nuevo…</option>
       </select>
       <div id="newReqFields" style="display:none;margin-top:10px;">
@@ -975,7 +1026,11 @@ function openNewTicketModal(){
     </div>
     <div class="grid2">
       <div class="field"><label>Departamento</label><input type="text" id="reqDeptDisplay" disabled placeholder="Se completa al elegir usuario"></div>
+      <div class="field"><label>Puesto</label><input type="text" id="newPuesto" placeholder="Puesto o cargo"></div>
+    </div>
+    <div class="grid2">
       <div class="field"><label>Prioridad</label><select id="newPriority"><option>Baja</option><option selected>Media</option><option>Alta</option><option>Crítica</option></select></div>
+      <div class="field"><label>Número de contacto</label><input type="tel" id="newContacto" placeholder="Teléfono o extensión"></div>
     </div>
     <div class="field"><label>Descripción del problema</label><textarea id="newDescription" rows="4" placeholder="Describe el problema reportado…"></textarea></div>
     <div class="grid2">
@@ -989,6 +1044,7 @@ function openNewTicketModal(){
     const v=e.target.value;
     document.getElementById('newReqFields').style.display=v==='__new__'?'block':'none';
     document.getElementById('reqDeptDisplay').value=v&&v!=='__new__'?(e.target.selectedOptions[0].dataset.dept||''):'';
+    document.getElementById('newPuesto').value=v&&v!=='__new__'?(e.target.selectedOptions[0].dataset.puesto||''):'';
   });
   document.getElementById('closeModalBtn').addEventListener('click',closeModal);
   document.getElementById('cancelNewTicketBtn').addEventListener('click',closeModal);
@@ -998,13 +1054,14 @@ function openNewTicketModal(){
 async function saveNewTicket(){
   const sel=document.getElementById('reqSelect');
   let requester='',department='';
+  const puesto=toTitleCase(document.getElementById('newPuesto').value.trim());
   if(sel.value==='__new__'){
     requester=toTitleCase(document.getElementById('newReqName').value.trim());
     department=document.getElementById('newReqDept').value;
     if(!requester){showToast('Escribe el nombre del usuario nuevo');return;}
     if(!department){showToast('Selecciona el departamento');return;}
     if(!REQUESTERS.some(r=>r.name.toLowerCase()===requester.toLowerCase())){
-      setSyncDot('busy'); await sbPost('requesters',{name:requester,department}); REQUESTERS.push({name:requester,department}); setSyncDot('ok');
+      setSyncDot('busy'); await sbPost('requesters',{name:requester,department,puesto}); REQUESTERS.push({name:requester,department,puesto}); setSyncDot('ok');
     }
   } else if(!sel.value){showToast('Selecciona o agrega un usuario');return;}
   else{requester=sel.value;department=sel.selectedOptions[0].dataset.dept||'';}
@@ -1012,9 +1069,10 @@ async function saveNewTicket(){
   if(!description){showToast('Describe el problema');return;}
   const createdRaw=document.getElementById('newCreatedAt').value;
   if(!createdRaw){showToast('Indica la fecha y hora');return;}
+  const contacto=document.getElementById('newContacto').value.trim();
   setSyncDot('busy');
   const id=await nextId();
-  const ticket={id,requester,department,description,priority:document.getElementById('newPriority').value,status:'Abierto',technician:document.getElementById('newTechnician').value||'',created_at:new Date(createdRaw).toISOString(),resolved_at:null,log:[{at:new Date().toISOString(),text:'Ticket creado'}]};
+  const ticket={id,requester,department,puesto,contacto,description,priority:document.getElementById('newPriority').value,status:'Abierto',technician:document.getElementById('newTechnician').value||'',created_at:new Date(createdRaw).toISOString(),resolved_at:null,log:[{at:new Date().toISOString(),text:'Ticket creado'}]};
   await sbPost('tickets',ticket);
   TICKETS.unshift(ticket);
   setSyncDot('ok');
@@ -1025,7 +1083,7 @@ async function saveNewTicket(){
 }
 
 /* ---- Sincronizar catálogo maestro de solicitantes al corregir datos en un ticket ---- */
-async function syncRequesterCatalog(oldName,newName,newDept){
+async function syncRequesterCatalog(oldName,newName,newDept,newPuesto){
   const oldLower=(oldName||'').toLowerCase();
   const newLower=(newName||'').toLowerCase();
   const oldRecord=REQUESTERS.find(r=>r.name.toLowerCase()===oldLower);
@@ -1035,15 +1093,15 @@ async function syncRequesterCatalog(oldName,newName,newDept){
     return{status:'conflict'};
   }
   if(oldRecord){
-    if(oldRecord.name!==newName||oldRecord.department!==newDept){
-      await sbPatch('requesters',{name:oldRecord.name},{name:newName,department:newDept});
-      oldRecord.name=newName;oldRecord.department=newDept;
+    if(oldRecord.name!==newName||oldRecord.department!==newDept||(oldRecord.puesto||'')!==(newPuesto||'')){
+      await sbPatch('requesters',{name:oldRecord.name},{name:newName,department:newDept,puesto:newPuesto||''});
+      oldRecord.name=newName;oldRecord.department=newDept;oldRecord.puesto=newPuesto||'';
     }
     return{status:'updated'};
   }
   if(!REQUESTERS.some(r=>r.name.toLowerCase()===newLower)){
-    await sbPost('requesters',{name:newName,department:newDept});
-    REQUESTERS.push({name:newName,department:newDept});
+    await sbPost('requesters',{name:newName,department:newDept,puesto:newPuesto||''});
+    REQUESTERS.push({name:newName,department:newDept,puesto:newPuesto||''});
     return{status:'created'};
   }
   return{status:'noop'};
@@ -1065,6 +1123,10 @@ function openTicketDetail(id){
     <div class="grid2">
       <div class="field"><label>Solicitante</label><input type="text" id="editRequester" value="${escapeHtml(t.requester)}"></div>
       <div class="field"><label>Departamento</label><select id="editDepartment">${deptOpts}</select></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Puesto</label><input type="text" id="editPuesto" value="${escapeHtml(t.puesto||'')}"></div>
+      <div class="field"><label>Número de contacto</label><input type="tel" id="editContacto" value="${escapeHtml(t.contacto||'')}"></div>
     </div>
     <div class="ticket-detail-meta">
       <div class="m"><div class="l">Solicitado</div>${fmtDateTime(t.created_at)}</div>
@@ -1113,6 +1175,8 @@ function openTicketDetail(id){
     const updates={
       requester:newRequester,
       department:document.getElementById('editDepartment').value,
+      puesto:document.getElementById('editPuesto').value.trim(),
+      contacto:document.getElementById('editContacto').value.trim(),
       description:newDescription,
       priority:document.getElementById('editPriority').value,
       status:newStatus,
@@ -1132,8 +1196,9 @@ function openTicketDetail(id){
     updates.log=[...(t.log||[]),{at:new Date().toISOString(),text:changeNotes.join(' · ')}];
     setSyncDot('busy');
     let catalogResult=null;
-    if(requesterChanged||deptChanged){
-      catalogResult=await syncRequesterCatalog(t.requester,newRequester,updates.department);
+    const puestoChanged=(updates.puesto||'')!==(t.puesto||'');
+    if(requesterChanged||deptChanged||puestoChanged){
+      catalogResult=await syncRequesterCatalog(t.requester,newRequester,updates.department,updates.puesto);
     }
     await sbPatch('tickets',{id:t.id},updates); Object.assign(t,updates); setSyncDot('ok');
     closeModal(); refreshAllViews();
@@ -1232,9 +1297,10 @@ function renderDeptList(){
   });
 }
 function renderUserList(){
-  document.getElementById('userList').innerHTML=REQUESTERS.map(({name,department})=>{
+  document.getElementById('userList').innerHTML=REQUESTERS.map(({name,department,puesto})=>{
     const used=TICKETS.filter(t=>t.requester===name).length;
-    return `<li><span>${escapeHtml(name)} <span class="tag">(${escapeHtml(department)} · ${used} ticket${used!==1?'s':''})</span></span><button class="remove-btn" data-name="${escapeHtml(name)}">Quitar</button></li>`;
+    const puestoTag=puesto?` · ${escapeHtml(puesto)}`:'';
+    return `<li><span>${escapeHtml(name)} <span class="tag">(${escapeHtml(department)}${puestoTag} · ${used} ticket${used!==1?'s':''})</span></span><button class="remove-btn" data-name="${escapeHtml(name)}">Quitar</button></li>`;
   }).join('');
   document.querySelectorAll('#userList .remove-btn').forEach(btn=>{
     btn.addEventListener('click',async()=>{
@@ -1259,11 +1325,12 @@ function setupCatalogEvents(){
   document.getElementById('addUserBtn').addEventListener('click',async()=>{
     const name=toTitleCase(document.getElementById('newUserInput').value.trim());
     const dept=document.getElementById('newUserDept').value;
+    const puesto=toTitleCase(document.getElementById('newUserPuesto').value.trim());
     if(!name){showToast('Escribe el nombre del usuario');return;}
     if(!dept){showToast('Selecciona un departamento');return;}
     if(REQUESTERS.some(r=>r.name.toLowerCase()===name.toLowerCase())){showToast('Ya existe');return;}
-    setSyncDot('busy');await sbPost('requesters',{name,department:dept});REQUESTERS.push({name,department:dept});setSyncDot('ok');
-    document.getElementById('newUserInput').value='';renderCatalogs();showToast(`"${name}" agregado`);
+    setSyncDot('busy');await sbPost('requesters',{name,department:dept,puesto});REQUESTERS.push({name,department:dept,puesto});setSyncDot('ok');
+    document.getElementById('newUserInput').value='';document.getElementById('newUserPuesto').value='';renderCatalogs();showToast(`"${name}" agregado`);
   });
   [['newTechInput','addTechBtn'],['newDeptInput','addDeptBtn'],['newUserInput','addUserBtn']].forEach(([i,b])=>{
     document.getElementById(i).addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();document.getElementById(b).click();}});
@@ -1339,15 +1406,27 @@ function refreshAllViews(){
 }
 
 /* ---- INIT ---- */
-async function init(){
+async function attemptInitialLoad(){
+  const loadingText=document.getElementById('loadingText');
+  const retryBtn=document.getElementById('loadingRetryBtn');
+  retryBtn.style.display='none';
+  loadingText.textContent='Conectando…';
   try{
     await loadAll();
+    document.getElementById('loadingScreen').style.display='none';
+    startAppAfterLoad();
   }catch(e){
-    document.querySelector('#loadingScreen .l2').textContent='Error al conectar con Supabase.';
-    console.error(e);return;
+    console.error(e);
+    const isTimeout=/TIMEOUT/.test(e.message||'');
+    loadingText.textContent=isTimeout
+      ?'Tu conexión está muy lenta o inestable. Verifica tu señal/WiFi.'
+      :'No se pudo conectar. Verifica tu internet.';
+    retryBtn.style.display='inline-block';
   }
-  document.getElementById('loadingScreen').style.display='none';
+}
+document.getElementById('loadingRetryBtn').addEventListener('click',attemptInitialLoad);
 
+function startAppAfterLoad(){
   // Eventos login
   document.getElementById('adminLinkBtn').addEventListener('click',showLogin);
   document.getElementById('loginCloseBtn').addEventListener('click',hideLogin);
@@ -1390,7 +1469,7 @@ async function init(){
   startPolling();
 }
 
-init();
+attemptInitialLoad();
 })();
 </script>
 </body>
