@@ -952,6 +952,7 @@ function setupTicketTableEvents(){
   });
   document.getElementById('reportBtn').addEventListener('click',generateReport);
   document.getElementById('teamReportBtn').addEventListener('click',generateTeamReport);
+  document.getElementById('teamReportMonth').addEventListener('change',renderMetrics);
 }
 
 function generateReport(){
@@ -1241,9 +1242,12 @@ function renderMetrics(){
   populateReportMonths();
   const real=TECHS.filter(t=>!isProtectedName(t.name));
   if(!real.length){document.getElementById('metricsContainer').innerHTML=`<div class="panel"><p style="margin:0;color:#6b6358;font-family:var(--mono);font-size:12.5px;">Agrega colaboradores en Catálogos para ver sus métricas.</p></div>`;return;}
-  const maxRes=Math.max(1,...real.map(t=>TICKETS.filter(k=>k.technician===t.name&&k.resolved_at).length));
+  const monthSel=document.getElementById('teamReportMonth');
+  const monthVal=monthSel.value;
+  const scoped=monthVal==='all'?TICKETS:TICKETS.filter(t=>t.created_at&&t.created_at.slice(0,7)===monthVal);
+  const maxRes=Math.max(1,...real.map(t=>scoped.filter(k=>k.technician===t.name&&k.resolved_at).length));
   document.getElementById('metricsContainer').innerHTML=real.map(({name})=>{
-    const own=TICKETS.filter(t=>t.technician===name);
+    const own=scoped.filter(t=>t.technician===name);
     const resolved=own.filter(t=>t.resolved_at);
     const times=resolved.map(t=>hoursBetween(t.created_at,t.resolved_at)).filter(h=>h!==null);
     const avg=times.length?times.reduce((a,b)=>a+b,0)/times.length:null;
