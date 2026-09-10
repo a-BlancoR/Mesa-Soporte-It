@@ -210,7 +210,7 @@
         </div>
       </div>
 
-      <div class="field" id="ucDeptField" style="display:none;">
+      <div class="field">
         <label>Departamento</label>
         <select id="ucDeptSelect">
           <option value="">— Selecciona tu departamento —</option>
@@ -218,11 +218,6 @@
         <div id="ucNewDeptWrap" style="display:none;margin-top:8px;">
           <input type="text" id="ucNewDept" placeholder="Escribe el nombre de tu departamento">
         </div>
-      </div>
-
-      <div class="field" id="ucDeptDisplay" style="display:none;">
-        <label>Departamento</label>
-        <input type="text" id="ucDeptText" disabled>
       </div>
 
       <div class="field">
@@ -650,9 +645,12 @@ function populateUserScreen(){
     TECHS.filter(t=>!isProtectedName(t.name)).map(t=>`<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`).join('');
 
   const deptSel=document.getElementById('ucDeptSelect');
-  deptSel.innerHTML='<option value="">— Selecciona tu departamento —</option>'+
-    DEPTS.filter(d=>!isProtectedName(d.name)).map(d=>`<option>${escapeHtml(d.name)}</option>`).join('')+
-    '<option value="__new__">+ Agregar mi departamento</option>';
+  function renderDeptOptions(selectedValue){
+    deptSel.innerHTML='<option value="">— Selecciona tu departamento —</option>'+
+      DEPTS.filter(d=>!isProtectedName(d.name)).map(d=>`<option ${d.name===selectedValue?'selected':''}>${escapeHtml(d.name)}</option>`).join('')+
+      '<option value="__new__">+ Mi departamento no está en la lista</option>';
+  }
+  renderDeptOptions('');
   deptSel.onchange=()=>{
     document.getElementById('ucNewDeptWrap').style.display=deptSel.value==='__new__'?'block':'none';
   };
@@ -660,23 +658,17 @@ function populateUserScreen(){
   sel.onchange=()=>{
     const v=sel.value;
     const newWrap=document.getElementById('ucNewNameWrap');
-    const deptField=document.getElementById('ucDeptField');
-    const deptDisplay=document.getElementById('ucDeptDisplay');
     const puestoInput=document.getElementById('ucPuesto');
     newWrap.style.display=v==='__new__'?'block':'none';
+    document.getElementById('ucNewDeptWrap').style.display='none';
     if(v&&v!=='__new__'){
       const dept=sel.selectedOptions[0].dataset.dept||'';
-      document.getElementById('ucDeptText').value=dept;
-      deptDisplay.style.display='block';
-      deptField.style.display='none';
+      // Preseleccionamos el departamento que ya tenía guardado, pero el usuario lo puede cambiar si está mal.
+      const existsInList=Array.from(deptSel.options).some(o=>o.value===dept);
+      renderDeptOptions(existsInList?dept:'');
       if(puestoInput) puestoInput.value=sel.selectedOptions[0].dataset.puesto||'';
-    } else if(v==='__new__'){
-      deptField.style.display='block';
-      deptDisplay.style.display='none';
-      if(puestoInput) puestoInput.value='';
     } else {
-      deptField.style.display='none';
-      deptDisplay.style.display='none';
+      renderDeptOptions('');
       if(puestoInput) puestoInput.value='';
     }
   };
@@ -684,27 +676,42 @@ function populateUserScreen(){
 
 async function submitUserTicket(){
   const sel=document.getElementById('ucUserSelect');
-  let requester='',department='';
+  const deptSel=document.getElementById('ucDeptSelect');
+  let requester='';
+  const isNewName=sel.value==='__new__';
   const puesto=toTitleCase(document.getElementById('ucPuesto').value.trim());
-  if(sel.value==='__new__'){
+  if(isNewName){
     requester=toTitleCase(document.getElementById('ucNewName').value.trim());
-    department=document.getElementById('ucDeptSelect').value;
     if(!requester){showToast('Escribe tu nombre completo');return;}
-    if(!department){showToast('Selecciona tu departamento');return;}
-    if(department==='__new__'){
-      department=toTitleCase(document.getElementById('ucNewDept').value.trim());
-      if(!department){showToast('Escribe el nombre de tu departamento');return;}
-      if(!DEPTS.some(d=>d.name.toLowerCase()===department.toLowerCase())){
-        await sbPost('departments',{name:department});
-        DEPTS.push({name:department});
-      }
+  } else if(!sel.value){showToast('Selecciona tu nombre');return;}
+  else{requester=sel.value;}
+
+  let department=deptSel.value;
+  if(!department){showToast('Selecciona tu departamento');return;}
+  if(department==='__new__'){
+    department=toTitleCase(document.getElementById('ucNewDept').value.trim());
+    if(!department){showToast('Escribe el nombre de tu departamento');return;}
+    if(!DEPTS.some(d=>d.name.toLowerCase()===department.toLowerCase())){
+      await sbPost('departments',{name:department});
+      DEPTS.push({name:department});
     }
+  }
+
+  if(isNewName){
     if(!REQUESTERS.some(r=>r.name.toLowerCase()===requester.toLowerCase())){
       await sbPost('requesters',{name:requester,department,puesto});
       REQUESTERS.push({name:requester,department,puesto});
     }
-  } else if(!sel.value){showToast('Selecciona tu nombre');return;}
-  else{requester=sel.value;department=sel.selectedOptions[0].dataset.dept||'';}
+  } else {
+    // Si el usuario ya existía pero corrigió su departamento, también actualizamos el catálogo maestro.
+    const existing=REQUESTERS.find(r=>r.name.toLowerCase()===requester.toLowerCase());
+    if(existing&&existing.department!==department){
+      try{
+        await sbPatch('requesters',{name:existing.name},{department});
+        existing.department=department;
+      }catch(e){ console.error('No se pudo actualizar el catálogo de solicitantes:',e); }
+    }
+  }
 
   const description=document.getElementById('ucDescription').value.trim();
   if(!description){showToast('Describe el problema');return;}
@@ -742,11 +749,10 @@ function resetUserForm(){
       <select id="ucUserSelect"><option value="">— Selecciona tu nombre —</option><option value="__new__">+ Mi nombre no está en la lista</option></select>
       <div id="ucNewNameWrap" style="display:none;margin-top:8px;"><input type="text" id="ucNewName" placeholder="Escribe tu nombre completo"></div>
     </div>
-    <div class="field" id="ucDeptField" style="display:none;"><label>Departamento</label>
+    <div class="field"><label>Departamento</label>
       <select id="ucDeptSelect"><option value="">— Selecciona tu departamento —</option></select>
       <div id="ucNewDeptWrap" style="display:none;margin-top:8px;"><input type="text" id="ucNewDept" placeholder="Escribe el nombre de tu departamento"></div>
     </div>
-    <div class="field" id="ucDeptDisplay" style="display:none;"><label>Departamento</label><input type="text" id="ucDeptText" disabled></div>
     <div class="field"><label>Puesto</label><input type="text" id="ucPuesto" placeholder="Tu puesto o cargo"></div>
     <div class="field"><label>Describe el problema</label><textarea id="ucDescription" rows="4" placeholder="Explica lo que está pasando con detalle…"></textarea></div>
     <div class="field"><label>Personal asignado sugerido (opcional)</label><select id="ucTechSelect"><option value="">Sin preferencia</option></select></div>
