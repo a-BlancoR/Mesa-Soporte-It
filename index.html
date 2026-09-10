@@ -200,8 +200,8 @@
       <div class="uc-sub">Completa el formulario y el equipo de informática atenderá tu solicitud.</div>
 
       <div class="field">
-        <label>Tu nombre</label>
-        <select id="ucUserSelect">
+        <label>Tu nombre *</label>
+        <select id="ucUserSelect" required>
           <option value="">— Selecciona tu nombre —</option>
           <option value="__new__">+ Mi nombre no está en la lista</option>
         </select>
@@ -211,8 +211,8 @@
       </div>
 
       <div class="field">
-        <label>Departamento</label>
-        <select id="ucDeptSelect">
+        <label>Departamento *</label>
+        <select id="ucDeptSelect" required>
           <option value="">— Selecciona tu departamento —</option>
         </select>
         <div id="ucNewDeptWrap" style="display:none;margin-top:8px;">
@@ -226,14 +226,15 @@
       </div>
 
       <div class="field">
-        <label>Describe el problema</label>
-        <textarea id="ucDescription" rows="4" placeholder="Explica lo que está pasando con detalle…"></textarea>
+        <label>Describe el problema *</label>
+        <textarea id="ucDescription" rows="4" placeholder="Explica lo que está pasando con detalle…" required></textarea>
       </div>
 
       <div class="field">
-        <label>Personal asignado sugerido (opcional)</label>
-        <select id="ucTechSelect">
-          <option value="">Sin preferencia</option>
+        <label>Personal asignado sugerido *</label>
+        <select id="ucTechSelect" required>
+          <option value="">— Selecciona una opción —</option>
+          <option value="__none__">Sin preferencia</option>
         </select>
       </div>
 
@@ -641,7 +642,7 @@ function populateUserScreen(){
     '<option value="__new__">+ Mi nombre no está en la lista</option>';
 
   const techSel=document.getElementById('ucTechSelect');
-  techSel.innerHTML='<option value="">Sin preferencia</option>'+
+  techSel.innerHTML='<option value="">— Selecciona una opción —</option><option value="__none__">Sin preferencia</option>'+
     TECHS.filter(t=>!isProtectedName(t.name)).map(t=>`<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`).join('');
 
   const deptSel=document.getElementById('ucDeptSelect');
@@ -677,20 +678,35 @@ function populateUserScreen(){
 async function submitUserTicket(){
   const sel=document.getElementById('ucUserSelect');
   const deptSel=document.getElementById('ucDeptSelect');
-  let requester='';
+  const techSel=document.getElementById('ucTechSelect');
   const isNewName=sel.value==='__new__';
-  const puesto=toTitleCase(document.getElementById('ucPuesto').value.trim());
-  if(isNewName){
-    requester=toTitleCase(document.getElementById('ucNewName').value.trim());
-    if(!requester){showToast('Escribe tu nombre completo');return;}
-  } else if(!sel.value){showToast('Selecciona tu nombre');return;}
-  else{requester=sel.value;}
+  const newNameRaw=document.getElementById('ucNewName').value.trim();
+  const puestoRaw=document.getElementById('ucPuesto').value.trim();
+  const descriptionRaw=document.getElementById('ucDescription').value.trim();
+  const contactoRaw=document.getElementById('ucContacto').value.trim();
+  const techValue=techSel.value;
+  const deptValue=deptSel.value;
+  const newDeptRaw=document.getElementById('ucNewDept').value.trim();
 
-  let department=deptSel.value;
-  if(!department){showToast('Selecciona tu departamento');return;}
+  const missing=
+    !sel.value||
+    (isNewName&&!newNameRaw)||
+    !deptValue||
+    (deptValue==='__new__'&&!newDeptRaw)||
+    !puestoRaw||
+    !descriptionRaw||
+    !contactoRaw||
+    !techValue;
+  if(missing){showToast('Hacen falta completar campos');return;}
+
+  const requester=isNewName?toTitleCase(newNameRaw):sel.value;
+  const puesto=toTitleCase(puestoRaw);
+  const description=descriptionRaw;
+  const contacto=contactoRaw;
+
+  let department=deptValue;
   if(department==='__new__'){
-    department=toTitleCase(document.getElementById('ucNewDept').value.trim());
-    if(!department){showToast('Escribe el nombre de tu departamento');return;}
+    department=toTitleCase(newDeptRaw);
     if(!DEPTS.some(d=>d.name.toLowerCase()===department.toLowerCase())){
       await sbPost('departments',{name:department});
       DEPTS.push({name:department});
@@ -713,17 +729,11 @@ async function submitUserTicket(){
     }
   }
 
-  const description=document.getElementById('ucDescription').value.trim();
-  if(!description){showToast('Describe el problema');return;}
-
-  const contacto=document.getElementById('ucContacto').value.trim();
-  if(!puesto||!contacto){showToast('Hacen falta completar campos');return;}
-
   const btn=document.getElementById('ucSubmitBtn');
   btn.disabled=true; btn.textContent='Enviando…';
 
   const id=await nextId();
-  const tech=document.getElementById('ucTechSelect').value||'';
+  const tech=techValue==='__none__'?'':techValue;
   const ticket={
     id,requester,department,description,puesto,contacto,
     priority:'Media',status:'Abierto',technician:tech,
@@ -738,6 +748,7 @@ async function submitUserTicket(){
       <div class="s-icon">✅</div>
       <h3>¡Solicitud enviada!</h3>
       <p>Tu folio es <strong>${id}</strong>.<br>El equipo de informática atenderá tu solicitud a la brevedad.</p>
+      <p>Tu ticket fue agregado a la cola de tickets según su prioridad.</p>
       <button class="btn" id="ucNewTicketBtn" style="margin:0 auto;">Reportar otro problema</button>
     </div>`;
   document.getElementById('ucNewTicketBtn').addEventListener('click',resetUserForm);
@@ -747,17 +758,17 @@ function resetUserForm(){
   document.getElementById('userCard').innerHTML=`
     <h2>Reportar un problema</h2>
     <div class="uc-sub">Completa el formulario y el equipo de informática atenderá tu solicitud.</div>
-    <div class="field"><label>Tu nombre</label>
-      <select id="ucUserSelect"><option value="">— Selecciona tu nombre —</option><option value="__new__">+ Mi nombre no está en la lista</option></select>
+    <div class="field"><label>Tu nombre *</label>
+      <select id="ucUserSelect" required><option value="">— Selecciona tu nombre —</option><option value="__new__">+ Mi nombre no está en la lista</option></select>
       <div id="ucNewNameWrap" style="display:none;margin-top:8px;"><input type="text" id="ucNewName" placeholder="Escribe tu nombre completo"></div>
     </div>
-    <div class="field"><label>Departamento</label>
-      <select id="ucDeptSelect"><option value="">— Selecciona tu departamento —</option></select>
+    <div class="field"><label>Departamento *</label>
+      <select id="ucDeptSelect" required><option value="">— Selecciona tu departamento —</option></select>
       <div id="ucNewDeptWrap" style="display:none;margin-top:8px;"><input type="text" id="ucNewDept" placeholder="Escribe el nombre de tu departamento"></div>
     </div>
     <div class="field"><label>Puesto *</label><input type="text" id="ucPuesto" placeholder="Tu puesto o cargo" required></div>
-    <div class="field"><label>Describe el problema</label><textarea id="ucDescription" rows="4" placeholder="Explica lo que está pasando con detalle…"></textarea></div>
-    <div class="field"><label>Personal asignado sugerido (opcional)</label><select id="ucTechSelect"><option value="">Sin preferencia</option></select></div>
+    <div class="field"><label>Describe el problema *</label><textarea id="ucDescription" rows="4" placeholder="Explica lo que está pasando con detalle…" required></textarea></div>
+    <div class="field"><label>Personal asignado sugerido *</label><select id="ucTechSelect" required><option value="">— Selecciona una opción —</option><option value="__none__">Sin preferencia</option></select></div>
     <div class="field"><label>Número de contacto *</label><input type="tel" id="ucContacto" placeholder="Teléfono o extensión para contactarte" required></div>
     <div class="btn-row"><button class="btn" id="ucSubmitBtn" style="width:100%;">Enviar solicitud</button></div>`;
   populateUserScreen();
