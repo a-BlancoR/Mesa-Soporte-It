@@ -2,7 +2,7 @@
   "name": "Mesa de Ayuda · Secretaría del Trabajo",
   "short_name": "Mesa de Ayuda",
   "description": "Sistema de tickets de soporte técnico — Secretaría del Trabajo de Sonora",
-  "start_url": "./Index.html",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f5f5f5",
