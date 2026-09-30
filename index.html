@@ -3,7 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#7B1D42">
 <title>Mesa de Ayuda &middot; Secretaría del Trabajo</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
 :root{
 --ink:#1a1a1a;--paper:#f5f5f5;--panel:#ffffff;--line:#e0dada;--line-strong:#c9bcbc;
@@ -256,10 +260,8 @@ tbody tr{cursor:pointer;}
         <button class="btn" id="ucSubmitBtn" style="width:100%;">Enviar solicitud</button>
       </div>
     </div>
-    <div class="user-card" id="userCard"></div>
 </div>
-  <button class="admin-link" id="adminLinkBtn">Administrador</button>
-<div class="signature-mark">Hecho por 34330</div>
+  <div class="signature-mark">Hecho por 34330</div>
 </div>
 
 <!-- LOGIN ADMIN (fuera del userScreen para evitar superposición) -->
@@ -637,6 +639,79 @@ return s+'</svg>';
 function nowLocalInputValue(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16);}
 function isProtectedName(name){return['sin asignar'].includes((name||'').toLowerCase().trim());}
 
+/* ---- Notificaciones push (reemplaza las notificaciones de solo-pestaña-abierta) ---- */
+const VAPID_PUBLIC_KEY='BHyOcIGVLXbsMmvoiAVQlLlXlfBmA2DvbjcPWTdfrlHzly5OxRHlgGUAq0U7KkXQ-z_qIcxLTuXAW2M7qTfKyjw';
+function urlBase64ToUint8Array(base64String){
+const padding='='.repeat((4-base64String.length%4)%4);
+const base64=(base64String+padding).replace(/-/g,'+').replace(/_/g,'/');
+const raw=atob(base64);
+const arr=new Uint8Array(raw.length);
+for(let i=0;i<raw.length;i++) arr[i]=raw.charCodeAt(i);
+return arr;
+}
+function syncBadge(){
+if(!('setAppBadge' in navigator)) return;
+if(typeof Notification==='undefined'||Notification.permission!=='granted') return;
+const openCount=TICKETS.filter(t=>t.status==='Abierto'||t.status==='En proceso').length;
+(openCount>0?navigator.setAppBadge(openCount):navigator.clearAppBadge()).catch(()=>{});
+}
+async function setupPushNotifications(){
+const btn=document.getElementById('notifBtn');
+if(!('serviceWorker' in navigator)||!('PushManager' in window)||typeof Notification==='undefined'){
+btn.style.display='none';
+return;
+}
+async function refreshBtnLabel(){
+try{
+const reg=await navigator.serviceWorker.ready;
+const sub=await reg.pushManager.getSubscription();
+btn.textContent=sub?'🔔 Notificaciones activadas':'🔔 Activar notificaciones';
+}catch(e){ /* service worker aún no listo */ }
+}
+refreshBtnLabel();
+btn.addEventListener('click',async()=>{
+const reg=await navigator.serviceWorker.ready;
+let sub=await reg.pushManager.getSubscription();
+if(sub){
+setSyncDot('busy');
+try{ await sbDelete('push_subscriptions',{endpoint:sub.endpoint}); }catch(e){}
+await sub.unsubscribe();
+setSyncDot('ok');
+showToast('Notificaciones desactivadas en este dispositivo');
+refreshBtnLabel();
+return;
+}
+const perm=await Notification.requestPermission();
+if(perm!=='granted'){ showToast('Permiso de notificaciones denegado'); return; }
+try{
+sub=await reg.pushManager.subscribe({
+userVisibleOnly:true,
+applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+});
+const j=sub.toJSON();
+setSyncDot('busy');
+await sbPost('push_subscriptions',{ endpoint:j.endpoint, p256dh:j.keys.p256dh, auth:j.keys.auth, technician:MY_IDENTITY||null });
+setSyncDot('ok');
+showToast('Notificaciones activadas en este dispositivo');
+refreshBtnLabel();
+syncBadge();
+}catch(e){
+console.error(e);
+showToast('No se pudo activar. Revisa la consola.');
+}
+});
+}
+// Si ya tenías una suscripción activa y cambias de identidad, la actualizamos
+// para que el filtro por colaborador también aplique a las notificaciones push.
+async function updatePushSubscriptionIdentity(){
+if(!('serviceWorker' in navigator)) return;
+try{
+const reg=await navigator.serviceWorker.ready;
+const sub=await reg.pushManager.getSubscription();
+if(sub) await sbPatch('push_subscriptions',{endpoint:sub.endpoint},{technician:MY_IDENTITY||null});
+}catch(e){ /* sin suscripción activa, no hay nada que actualizar */ }
+}
+
 /* ---- PANTALLA USUARIO ---- */
 function showUserScreen(){
 isAdmin=false;
@@ -921,6 +996,7 @@ MY_IDENTITY=document.getElementById('identitySelect').value;
 localStorage.setItem('mesadeayuda_identity',MY_IDENTITY);
 updateIdentityBtnLabel();
 hideIdentityPicker();
+updatePushSubscriptionIdentity();
 showToast(MY_IDENTITY?`Notificaciones filtradas para ${MY_IDENTITY}`:'Recibirás todas las notificaciones');
 }
 
@@ -1486,18 +1562,10 @@ o.start();o.stop(ctx.currentTime+0.6);
 }catch(e){}
 }
 function showDesktopNotif(ticket){
+// La notificación visual del sistema ahora la entrega el push (llega igual
+// con la pestaña cerrada). Aquí solo dejamos el sonido como aviso inmediato
+// si ya estás viendo la app con la pestaña abierta.
 playBeep();
-if(notifPermission!=='granted') return;
-const n=new Notification('Nuevo ticket — Mesa de Ayuda',{
-body:`${ticket.id} · ${ticket.requester}\n${ticket.description.slice(0,80)}${ticket.description.length>80?'…':''}`,
-tag:ticket.id
-});
-n.onclick=()=>{
-window.focus();
-if(isAdmin){goToView('tickets');window.__openTicket(ticket.id);}
-n.close();
-};
-setTimeout(()=>n.close(),8000);
 }
 
 /* ---- POLLING ---- */
@@ -1538,6 +1606,7 @@ const active=document.querySelector('.tab-btn.active')?.dataset.view;
 renderDashboard();renderTicketsTable();
 if(active==='metrics') renderMetrics();
 if(active==='catalogs') renderCatalogs();
+syncBadge();
 }
 
 /* ---- INIT ---- */
@@ -1563,7 +1632,6 @@ document.getElementById('loadingRetryBtn').addEventListener('click',attemptIniti
 
 function startAppAfterLoad(){
 // Eventos login
-  document.getElementById('adminLinkBtn').addEventListener('click',showLogin);
 document.getElementById('loginCloseBtn').addEventListener('click',hideLogin);
 document.getElementById('loginSubmitBtn').addEventListener('click',tryLogin);
 document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter') tryLogin();});
@@ -1584,21 +1652,7 @@ document.getElementById('identityBtn').addEventListener('click',openIdentityPick
 document.getElementById('identityCloseBtn').addEventListener('click',hideIdentityPicker);
 document.getElementById('identitySaveBtn').addEventListener('click',saveIdentity);
 document.getElementById('identityOverlay').addEventListener('click',e=>{if(e.target.id==='identityOverlay') hideIdentityPicker();});
-const notifSupported=typeof Notification!=='undefined';
-document.getElementById('notifBtn').addEventListener('click',()=>{
-if(!notifSupported){showToast('Tu navegador no soporta notificaciones de escritorio.');return;}
-Notification.requestPermission().then(p=>{
-notifPermission=p;
-if(p==='granted'){document.getElementById('notifBtn').textContent='🔔 Notificaciones activas';document.getElementById('notifBtn').disabled=true;}
-else showToast('Permiso denegado. Actívalo en la configuración del navegador.');
-});
-});
-if(!notifSupported){
-const nb=document.getElementById('notifBtn');
-nb.textContent='🔕 Notificaciones no disponibles';nb.disabled=true;
-} else if(Notification.permission==='granted'){
-notifPermission='granted';document.getElementById('notifBtn').textContent='🔔 Notificaciones activas';document.getElementById('notifBtn').disabled=true;
-}
+setupPushNotifications();
 
 tickClock();setInterval(tickClock,1000);
 showUserScreen();
@@ -1606,6 +1660,12 @@ startPolling();
 }
 
 attemptInitialLoad();
+
+if('serviceWorker' in navigator){
+window.addEventListener('load',()=>{
+navigator.serviceWorker.register('sw.js').catch(err=>console.error('SW error:',err));
+});
+}
 })();
 </script>
 </body>
