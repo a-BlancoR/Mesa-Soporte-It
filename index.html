@@ -432,7 +432,8 @@ const EMAILJS_SERVICE = 'service_iucb5sj';
 const EMAILJS_TEMPLATE = 'template_1btjxkb';
 const EMAILJS_KEY = 'VjKO3g-lW8IT4qoc1';
 
-let SESSION=null; // {access_token,refresh_token,expires_at} set on successful Supabase Auth login, held only in memory
+let SESSION=null; // {access_token,refresh_token,expires_at} set on successful Supabase Auth login
+const ADMIN_REFRESH_KEY='mesadeayuda_admin_refresh';
 async function refreshSession(){
 if(!SESSION||!SESSION.refresh_token) return false;
 try{
@@ -444,6 +445,25 @@ body:JSON.stringify({refresh_token:SESSION.refresh_token})
 const data=await r.json();
 if(!r.ok||!data.access_token) return false;
 SESSION={access_token:data.access_token,refresh_token:data.refresh_token,expires_at:Date.now()+(data.expires_in||3600)*1000};
+localStorage.setItem(ADMIN_REFRESH_KEY,SESSION.refresh_token);
+return true;
+}catch(e){ return false; }
+}
+// Intenta reconectar automáticamente con el refresh token guardado en este
+// celular, sin pedir correo/contraseña de nuevo. Devuelve true si funcionó.
+async function attemptAutoLogin(){
+const saved=localStorage.getItem(ADMIN_REFRESH_KEY);
+if(!saved) return false;
+try{
+const r=await fetchWithTimeout(`${SB_URL}/auth/v1/token?grant_type=refresh_token`,{
+method:'POST',
+headers:{'Content-Type':'application/json','apikey':SB_KEY},
+body:JSON.stringify({refresh_token:saved})
+});
+const data=await r.json();
+if(!r.ok||!data.access_token){ localStorage.removeItem(ADMIN_REFRESH_KEY); return false; }
+SESSION={access_token:data.access_token,refresh_token:data.refresh_token,expires_at:Date.now()+(data.expires_in||3600)*1000};
+localStorage.setItem(ADMIN_REFRESH_KEY,SESSION.refresh_token);
 return true;
 }catch(e){ return false; }
 }
@@ -1019,6 +1039,7 @@ errBox.textContent='Usuario o contraseña incorrectos.';
 return;
 }
 SESSION={access_token:data.access_token,refresh_token:data.refresh_token,expires_at:Date.now()+(data.expires_in||3600)*1000};
+localStorage.setItem(ADMIN_REFRESH_KEY,SESSION.refresh_token);
 hideLogin();
 await showAdminShell();
 }catch(e){
@@ -1040,6 +1061,7 @@ TICKETS=await sbGet('tickets');
 setSyncDot('err');
 isAdmin=false;
 SESSION=null;
+localStorage.removeItem(ADMIN_REFRESH_KEY);
 document.getElementById('appShell').style.display='none';
 showUserScreen();
 showToast('Sesión no autorizada. Verifica tus credenciales.');
@@ -1581,6 +1603,7 @@ if(isAdmin){
 const ok=await ensureSession();
 if(!ok){
 isAdmin=false;SESSION=null;TICKETS=[];
+localStorage.removeItem(ADMIN_REFRESH_KEY);
 document.getElementById('appShell').style.display='none';
 showUserScreen();
 showToast('Tu sesión expiró. Inicia sesión de nuevo.');
@@ -1617,8 +1640,8 @@ retryBtn.style.display='none';
 loadingText.textContent='Conectando…';
 try{
 await loadAll();
+await startAppAfterLoad();
 document.getElementById('loadingScreen').style.display='none';
-startAppAfterLoad();
 }catch(e){
 console.error(e);
 const isTimeout=/TIMEOUT/.test(e.message||'');
@@ -1630,7 +1653,7 @@ retryBtn.style.display='inline-block';
 }
 document.getElementById('loadingRetryBtn').addEventListener('click',attemptInitialLoad);
 
-function startAppAfterLoad(){
+async function startAppAfterLoad(){
 // Eventos login
 document.getElementById('loginCloseBtn').addEventListener('click',hideLogin);
 document.getElementById('loginSubmitBtn').addEventListener('click',tryLogin);
@@ -1647,7 +1670,7 @@ document.getElementById('openNewTicketBtn').addEventListener('click',openNewTick
 document.getElementById('quickNewTicket').addEventListener('click',()=>{goToView('tickets');setTimeout(openNewTicketModal,50);});
 document.getElementById('ticketOverlay').addEventListener('click',e=>{if(e.target.id==='ticketOverlay') closeModal();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape') closeModal();});
-document.getElementById('logoutBtn').addEventListener('click',()=>{isAdmin=false;SESSION=null;TICKETS=[];showUserScreen();});
+document.getElementById('logoutBtn').addEventListener('click',()=>{isAdmin=false;SESSION=null;TICKETS=[];localStorage.removeItem(ADMIN_REFRESH_KEY);showUserScreen();});
 document.getElementById('identityBtn').addEventListener('click',openIdentityPicker);
 document.getElementById('identityCloseBtn').addEventListener('click',hideIdentityPicker);
 document.getElementById('identitySaveBtn').addEventListener('click',saveIdentity);
@@ -1655,7 +1678,8 @@ document.getElementById('identityOverlay').addEventListener('click',e=>{if(e.tar
 setupPushNotifications();
 
 tickClock();setInterval(tickClock,1000);
-showUserScreen();
+const autoLoggedIn=await attemptAutoLogin();
+if(autoLoggedIn){ await showAdminShell(); } else { showUserScreen(); }
 startPolling();
 }
 
