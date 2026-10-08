@@ -108,8 +108,16 @@ thead th:hover{color:var(--ink);}
 tbody td{padding:11px 10px;border-bottom:1px solid var(--line);vertical-align:top;}
 tbody tr:hover{background:#fbf9f6;}
 tbody tr.sel-row{background:var(--accent-soft);}
-.col-check{width:34px;text-align:center;padding-left:12px!important;padding-right:4px!important;cursor:default;}
+.col-check{display:none;width:34px;text-align:center;padding-left:12px!important;padding-right:4px!important;cursor:default;}
+.sel-mode .col-check{display:table-cell;}
+.sel-mode tbody tr:not(.empty-row){cursor:pointer;}
+#bulkDeleteBtn{display:none;}
+#bulkDeleteBtn.show{display:inline-block;}
 .col-check input{width:17px;height:17px;accent-color:var(--accent);cursor:pointer;}
+.mass-row{display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;}
+.mass-row .mass-n{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--accent);padding-top:10px;min-width:22px;}
+.mass-row textarea{flex:1;}
+.mass-row .mass-del{background:none;border:1.5px solid var(--border,#ccc);border-radius:4px;width:34px;height:34px;cursor:pointer;font-size:18px;line-height:1;margin-top:3px;}
 .bulk-bar{display:none;align-items:center;gap:10px;flex-wrap:wrap;background:var(--accent-soft);border:1.5px solid var(--accent);border-radius:4px;padding:10px 14px;margin-bottom:14px;}
 .bulk-bar.show{display:flex;}
 .bulk-bar .bulk-count{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--accent);margin-right:auto;}
@@ -363,17 +371,19 @@ tbody tr{cursor:pointer;}
 <div class="field"><label>Personal de Informática</label>
 <select id="filterTech"><option value="">Todos</option></select>
 </div>
-<button class="btn secondary" id="selectDupBtn">Seleccionar duplicados</button>
+<button class="btn secondary" id="selectModeBtn">&#9745; Seleccionar varios</button>
 <button class="btn secondary" id="reportBtn" disabled>&#128438; Reporte</button>
 <button class="btn" id="openNewTicketBtn">+ Nuevo ticket</button>
+<button class="btn secondary" id="openBulkTicketBtn">+ Tickets masivos</button>
 </div>
 <div class="bulk-bar" id="bulkBar">
-<span class="bulk-count" id="bulkCount">0 seleccionados</span>
+<span class="bulk-count" id="bulkCount">Elige los tickets a eliminar</span>
+<button class="btn secondary" id="selectDupBtn">Seleccionar duplicados</button>
 <button class="btn secondary" id="bulkClearBtn">Quitar selección</button>
 <button class="btn danger" id="bulkDeleteBtn">Eliminar seleccionados</button>
 </div>
 <div class="panel" style="padding:0;overflow-x:auto;">
-<table>
+<table id="ticketsTable">
 <thead><tr>
 <th class="col-check"><input type="checkbox" id="selectAllChk" title="Seleccionar todos los visibles"></th>
 <th data-sort="id">Folio</th><th data-sort="requester">Solicitante</th>
@@ -572,6 +582,7 @@ return `TK-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
 
 let TICKETS=[],TECHS=[],DEPTS=[],REQUESTERS=[];
 const SELECTED=new Set(); // folios marcados para eliminación masiva
+let selectMode=false;     // true = se muestran las casillas
 let isAdmin=false;
 let MY_IDENTITY=localStorage.getItem('mesadeayuda_identity')||'';
 
@@ -1169,7 +1180,7 @@ function renderTicketsTable(){
 populateFilterTech();
 const list=getFiltered();
 document.getElementById('ticketsTableBody').innerHTML=list.map(t=>`
-   <tr class="${SELECTED.has(t.id)?'sel-row':''}" onclick="window.__openTicket('${t.id}')">
+   <tr class="${SELECTED.has(t.id)?'sel-row':''}" onclick="window.__rowClick('${t.id}')">
      <td class="col-check" onclick="event.stopPropagation()"><input type="checkbox" data-id="${t.id}" ${SELECTED.has(t.id)?'checked':''}></td>
      <td class="ticket-id">${t.id}</td><td>${escapeHtml(t.requester)}</td>
      <td>${escapeHtml(t.department)}</td>
@@ -1187,11 +1198,28 @@ updateBulkBar(list);
 /* ---- SELECCIÓN MÚLTIPLE Y ELIMINACIÓN MASIVA ---- */
 const DUP_WINDOW_MS=10*60*1000; // tickets idénticos creados con menos de 10 min de diferencia se consideran duplicados
 
+function setSelectMode(on){
+selectMode=on;
+if(!on) SELECTED.clear();
+document.getElementById('ticketsTable').classList.toggle('sel-mode',on);
+const b=document.getElementById('selectModeBtn');
+b.innerHTML=on?'&#10005; Cancelar selección':'&#9745; Seleccionar varios';
+renderTicketsTable();
+}
+// En modo selección, tocar una fila la marca/desmarca; fuera de él, abre el ticket
+window.__rowClick=function(id){
+if(!selectMode){ window.__openTicket(id); return; }
+if(SELECTED.has(id)) SELECTED.delete(id); else SELECTED.add(id);
+renderTicketsTable();
+};
 function updateBulkBar(list){
 list=list||getFiltered();
 const n=SELECTED.size;
-document.getElementById('bulkBar').classList.toggle('show',n>0);
-document.getElementById('bulkCount').textContent=`${n} seleccionado${n===1?'':'s'}`;
+document.getElementById('bulkBar').classList.toggle('show',selectMode);
+document.getElementById('bulkCount').textContent=n?`${n} seleccionado${n===1?'':'s'}`:'Elige los tickets a eliminar';
+const del=document.getElementById('bulkDeleteBtn');
+del.classList.toggle('show',n>0);
+del.textContent=`Eliminar (${n})`;
 const all=document.getElementById('selectAllChk');
 const visSel=list.filter(t=>SELECTED.has(t.id)).length;
 all.checked=list.length>0&&visSel===list.length;
@@ -1252,6 +1280,7 @@ showToast('Error al eliminar: '+(e.message||e).toString().slice(0,80));
 }finally{
 btn.disabled=false;
 refreshAllViews();
+if(!SELECTED.size) setSelectMode(false);
 }
 }
 function setupTicketTableEvents(){
@@ -1284,6 +1313,7 @@ renderTicketsTable();
 document.getElementById('bulkClearBtn').addEventListener('click',()=>{SELECTED.clear();renderTicketsTable();});
 document.getElementById('bulkDeleteBtn').addEventListener('click',deleteSelected);
 document.getElementById('selectDupBtn').addEventListener('click',selectDuplicates);
+document.getElementById('selectModeBtn').addEventListener('click',()=>setSelectMode(!selectMode));
 document.getElementById('teamReportBtn').addEventListener('click',generateTeamReport);
 document.getElementById('teamReportMonth').addEventListener('change',renderMetrics);
 }
@@ -1551,6 +1581,139 @@ openModal();
 }
 window.__openTicket=openTicketDetail;
 
+
+/* ---- CREACIÓN MASIVA DE TICKETS (mismo solicitante, distinta descripción) ---- */
+const MASS_MAX=20;
+let massSubmitting=false;
+function massRenumber(){
+const rows=[...document.querySelectorAll('#massRows .mass-row')];
+rows.forEach((r,i)=>{r.querySelector('.mass-n').textContent=(i+1)+'.';});
+const c=document.getElementById('massCount'); if(c) c.textContent=`${rows.length} ticket(s) por crear`;
+}
+function massAddRow(text=''){
+const wrap=document.getElementById('massRows');
+if(wrap.children.length>=MASS_MAX){showToast(`Máximo ${MASS_MAX} tickets por carga`);return;}
+const row=document.createElement('div'); row.className='mass-row';
+row.innerHTML=`<span class="mass-n"></span><textarea rows="2" placeholder="Descripción del problema…"></textarea><button type="button" class="mass-del" title="Quitar">&times;</button>`;
+row.querySelector('textarea').value=text;
+row.querySelector('.mass-del').addEventListener('click',()=>{ if(wrap.children.length>1){row.remove();massRenumber();} else row.querySelector('textarea').value=''; });
+wrap.appendChild(row); massRenumber();
+return row;
+}
+function openMassTicketModal(){
+const techOpts=TECHS.map(t=>`<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`).join('');
+const modal=document.getElementById('ticketModal');
+modal.innerHTML=`
+   <button class="modal-close" id="closeModalBtn">&times;</button>
+   <h3>Tickets masivos</h3>
+   <div class="modal-sub">Mismo solicitante para todos. Cada ticket lleva su propia descripción.</div>
+   <div class="field"><label>Usuario solicitante</label>
+     <select id="massReqSelect">
+       <option value="">— Seleccionar usuario —</option>
+       ${REQUESTERS.map(r=>`<option value="${escapeHtml(r.name)}" data-dept="${escapeHtml(r.department)}" data-puesto="${escapeHtml(r.puesto||'')}">${escapeHtml(r.name)} (${escapeHtml(r.department)})</option>`).join('')}
+     </select>
+   </div>
+   <div class="grid2">
+     <div class="field"><label>Departamento</label><input type="text" id="massDept" disabled placeholder="Se completa al elegir usuario"></div>
+     <div class="field"><label>Puesto</label><input type="text" id="massPuesto" placeholder="Puesto o cargo"></div>
+   </div>
+   <div class="grid2">
+     <div class="field"><label>Prioridad</label><select id="massPriority"><option>Baja</option><option selected>Media</option><option>Alta</option><option>Crítica</option></select></div>
+     <div class="field"><label>Número de contacto</label><input type="tel" id="massContacto" placeholder="Teléfono o extensión"></div>
+   </div>
+   <div class="grid2">
+     <div class="field"><label>Fecha y hora de la solicitud</label><input type="datetime-local" id="massCreatedAt"></div>
+     <div class="field"><label>Colaborador asignado (opcional)</label><select id="massTech"><option value="">Sin asignar</option>${techOpts}</select></div>
+   </div>
+   <div class="field"><label>Descripciones (una por ticket)</label>
+     <div id="massRows"></div>
+     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+       <button type="button" class="btn secondary" id="massAddBtn">+ Agregar descripción</button>
+       <span id="massCount" style="font-family:var(--mono);font-size:12px;"></span>
+     </div>
+   </div>
+   <div class="field"><label>O pega varias (una por línea) y se convierten en filas</label>
+     <textarea id="massPaste" rows="3" placeholder="Una descripción por línea…"></textarea>
+     <button type="button" class="btn secondary" id="massPasteBtn" style="margin-top:6px;">Convertir líneas en tickets</button>
+   </div>
+   <hr class="divider">
+   <div class="btn-row"><button class="btn" id="massSaveBtn">Crear tickets</button><button class="btn secondary" id="massCancelBtn">Cancelar</button></div>`;
+document.getElementById('massCreatedAt').value=nowLocalInputValue();
+massAddRow();
+document.getElementById('massReqSelect').addEventListener('change',e=>{
+const o=e.target.selectedOptions[0];
+document.getElementById('massDept').value=e.target.value?(o.dataset.dept||''):'';
+document.getElementById('massPuesto').value=e.target.value?(o.dataset.puesto||''):'';
+});
+document.getElementById('massAddBtn').addEventListener('click',()=>massAddRow());
+document.getElementById('massPasteBtn').addEventListener('click',()=>{
+const ta=document.getElementById('massPaste');
+const lines=ta.value.split('\n').map(x=>x.trim()).filter(Boolean);
+if(!lines.length) return;
+const wrap=document.getElementById('massRows');
+// Si solo hay una fila vacía, se reutiliza
+if(wrap.children.length===1&&!wrap.querySelector('textarea').value.trim()) wrap.innerHTML='';
+lines.forEach(l=>massAddRow(l));
+ta.value='';
+});
+document.getElementById('closeModalBtn').addEventListener('click',()=>{if(!massSubmitting)closeModal();});
+document.getElementById('massCancelBtn').addEventListener('click',()=>{if(!massSubmitting)closeModal();});
+document.getElementById('massSaveBtn').addEventListener('click',saveMassTickets);
+openModal();
+}
+async function saveMassTickets(){
+if(massSubmitting) return; // candado: ignora toques repetidos
+const sel=document.getElementById('massReqSelect');
+if(!sel.value){showToast('Selecciona el usuario solicitante');return;}
+const requester=sel.value, department=sel.selectedOptions[0].dataset.dept||'';
+const puesto=toTitleCase(document.getElementById('massPuesto').value.trim());
+const contacto=document.getElementById('massContacto').value.trim();
+const priority=document.getElementById('massPriority').value;
+const technician=document.getElementById('massTech').value||'';
+const createdRaw=document.getElementById('massCreatedAt').value;
+if(!createdRaw){showToast('Indica la fecha y hora');return;}
+const descs=[...document.querySelectorAll('#massRows textarea')].map(t=>t.value.trim()).filter(Boolean);
+if(!descs.length){showToast('Escribe al menos una descripción');return;}
+if(new Set(descs.map(d=>d.toLowerCase())).size<descs.length){
+if(!confirm('Hay descripciones repetidas en la lista. ¿Crear los tickets de todos modos?')) return;
+}
+if(!confirm(`Se crearán ${descs.length} ticket(s) para ${requester}.\n\n¿Continuar?`)) return;
+
+massSubmitting=true;
+const btn=document.getElementById('massSaveBtn');
+btn.disabled=true;
+document.getElementById('massCancelBtn').disabled=true;
+setSyncDot('busy');
+let creados=0; const folios=[];
+try{
+for(let i=0;i<descs.length;i++){
+btn.textContent=`Creando ${i+1} de ${descs.length}…`;
+const id=await nextId();
+const ahora=new Date().toISOString();
+const ticket={id,requester,department,puesto,contacto,description:descs[i],priority,status:'Abierto',technician,
+created_at:new Date(createdRaw).toISOString(),resolved_at:null,
+log:[{at:ahora,text:`Ticket creado (carga masiva ${i+1} de ${descs.length})`}]};
+await sbPost('tickets',ticket);
+TICKETS.unshift(ticket); creados++; folios.push(id);
+sendTicketEmail(ticket);
+await new Promise(r=>setTimeout(r,1100)); // pausa: EmailJS limita ~1 correo/seg
+}
+setSyncDot('ok');
+massSubmitting=false;
+closeModal();
+showToast(`${creados} ticket(s) creados`);
+}catch(e){
+setSyncDot('err');
+massSubmitting=false;
+btn.disabled=false; btn.textContent='Crear tickets';
+document.getElementById('massCancelBtn').disabled=false;
+showToast(`Error tras crear ${creados} de ${descs.length}: `+(e.message||e).toString().slice(0,60));
+alert(`Se detuvo la carga.\n\nCreados (${creados}): ${folios.join(', ')||'ninguno'}\n\nNo reintentes todo: revisa la lista de tickets y crea solo los que falten.`);
+}finally{
+refreshAllViews();
+}
+}
+
 function openModal(){document.getElementById('ticketOverlay').classList.add('active');}
 function closeModal(){document.getElementById('ticketOverlay').classList.remove('active');}
 
@@ -1771,6 +1934,7 @@ document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='
 // Eventos admin shell
 setupTabs();setupTicketTableEvents();setupCatalogEvents();
 document.getElementById('openNewTicketBtn').addEventListener('click',openNewTicketModal);
+document.getElementById('openBulkTicketBtn').addEventListener('click',openMassTicketModal);
 document.getElementById('quickNewTicket').addEventListener('click',()=>{goToView('tickets');setTimeout(openNewTicketModal,50);});
 document.getElementById('ticketOverlay').addEventListener('click',e=>{if(e.target.id==='ticketOverlay') closeModal();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape') closeModal();});
