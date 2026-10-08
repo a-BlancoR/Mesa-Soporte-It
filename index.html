@@ -107,6 +107,12 @@ thead th{text-align:left;font-family:var(--mono);font-size:10.5px;text-transform
 thead th:hover{color:var(--ink);}
 tbody td{padding:11px 10px;border-bottom:1px solid var(--line);vertical-align:top;}
 tbody tr:hover{background:#fbf9f6;}
+tbody tr.sel-row{background:var(--accent-soft);}
+.col-check{width:34px;text-align:center;padding-left:12px!important;padding-right:4px!important;cursor:default;}
+.col-check input{width:17px;height:17px;accent-color:var(--accent);cursor:pointer;}
+.bulk-bar{display:none;align-items:center;gap:10px;flex-wrap:wrap;background:var(--accent-soft);border:1.5px solid var(--accent);border-radius:4px;padding:10px 14px;margin-bottom:14px;}
+.bulk-bar.show{display:flex;}
+.bulk-bar .bulk-count{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--accent);margin-right:auto;}
 tbody tr{cursor:pointer;}
 .empty-row td{text-align:center;padding:50px 10px;color:#6b6358;font-family:var(--mono);font-size:12px;cursor:default;}
 .pill{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:.03em;text-transform:uppercase;padding:3px 8px;border-radius:3px;white-space:nowrap;}
@@ -357,12 +363,19 @@ tbody tr{cursor:pointer;}
 <div class="field"><label>Personal de Informática</label>
 <select id="filterTech"><option value="">Todos</option></select>
 </div>
+<button class="btn secondary" id="selectDupBtn">Seleccionar duplicados</button>
 <button class="btn secondary" id="reportBtn" disabled>&#128438; Reporte</button>
 <button class="btn" id="openNewTicketBtn">+ Nuevo ticket</button>
+</div>
+<div class="bulk-bar" id="bulkBar">
+<span class="bulk-count" id="bulkCount">0 seleccionados</span>
+<button class="btn secondary" id="bulkClearBtn">Quitar selección</button>
+<button class="btn danger" id="bulkDeleteBtn">Eliminar seleccionados</button>
 </div>
 <div class="panel" style="padding:0;overflow-x:auto;">
 <table>
 <thead><tr>
+<th class="col-check"><input type="checkbox" id="selectAllChk" title="Seleccionar todos los visibles"></th>
 <th data-sort="id">Folio</th><th data-sort="requester">Solicitante</th>
 <th data-sort="department">Depto.</th><th data-sort="priority">Prioridad</th>
 <th data-sort="status">Estado</th><th data-sort="technician">Colaborador</th>
@@ -558,6 +571,7 @@ return `TK-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
 }
 
 let TICKETS=[],TECHS=[],DEPTS=[],REQUESTERS=[];
+const SELECTED=new Set(); // folios marcados para eliminación masiva
 let isAdmin=false;
 let MY_IDENTITY=localStorage.getItem('mesadeayuda_identity')||'';
 
@@ -1155,14 +1169,90 @@ function renderTicketsTable(){
 populateFilterTech();
 const list=getFiltered();
 document.getElementById('ticketsTableBody').innerHTML=list.map(t=>`
-   <tr onclick="window.__openTicket('${t.id}')">
+   <tr class="${SELECTED.has(t.id)?'sel-row':''}" onclick="window.__openTicket('${t.id}')">
+     <td class="col-check" onclick="event.stopPropagation()"><input type="checkbox" data-id="${t.id}" ${SELECTED.has(t.id)?'checked':''}></td>
      <td class="ticket-id">${t.id}</td><td>${escapeHtml(t.requester)}</td>
      <td>${escapeHtml(t.department)}</td>
      <td><span class="pill pr-${slugify(t.priority)}">${t.priority}</span></td>
      <td><span class="pill st-${slugify(t.status)}">${t.status}</span></td>
      <td>${escapeHtml(t.technician||'Sin asignar')}</td>
      <td>${fmtDateTime(t.created_at)}</td><td>${fmtDateTime(t.resolved_at)}</td>
-   </tr>`).join('')||`<tr class="empty-row"><td colspan="8">No hay tickets que coincidan.</td></tr>`;
+   </tr>`).join('')||`<tr class="empty-row"><td colspan="9">No hay tickets que coincidan.</td></tr>`;
+// Quitar de la selección folios que ya no existen (p. ej. tras eliminar o sincronizar)
+const existentes=new Set(TICKETS.map(t=>t.id));
+SELECTED.forEach(id=>{ if(!existentes.has(id)) SELECTED.delete(id); });
+updateBulkBar(list);
+}
+
+/* ---- SELECCIÓN MÚLTIPLE Y ELIMINACIÓN MASIVA ---- */
+const DUP_WINDOW_MS=10*60*1000; // tickets idénticos creados con menos de 10 min de diferencia se consideran duplicados
+
+function updateBulkBar(list){
+list=list||getFiltered();
+const n=SELECTED.size;
+document.getElementById('bulkBar').classList.toggle('show',n>0);
+document.getElementById('bulkCount').textContent=`${n} seleccionado${n===1?'':'s'}`;
+const all=document.getElementById('selectAllChk');
+const visSel=list.filter(t=>SELECTED.has(t.id)).length;
+all.checked=list.length>0&&visSel===list.length;
+all.indeterminate=visSel>0&&visSel<list.length;
+}
+
+// Marca como duplicados los tickets idénticos (solicitante+depto+descripción) creados muy seguidos,
+// dejando SIN marcar el más antiguo de cada grupo.
+function selectDuplicates(){
+const norm=x=>String(x||'').trim().toLowerCase().replace(/\s+/g,' ');
+const grupos={};
+getFiltered().forEach(t=>{
+const k=[norm(t.requester),norm(t.department),norm(t.description)].join('|');
+(grupos[k]=grupos[k]||[]).push(t);
+});
+SELECTED.clear();
+Object.values(grupos).forEach(g=>{
+g.sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+let ref=g[0];
+for(let i=1;i<g.length;i++){
+const dt=new Date(g[i].created_at)-new Date(ref.created_at);
+if(dt<=DUP_WINDOW_MS) SELECTED.add(g[i].id); else ref=g[i];
+}
+});
+renderTicketsTable();
+showToast(SELECTED.size?`${SELECTED.size} posibles duplicados marcados (se conserva el más antiguo de cada grupo)`:'No se encontraron duplicados');
+}
+
+async function deleteSelected(){
+const ids=[...SELECTED];
+if(!ids.length) return;
+const muestra=ids.slice(0,8).join('\n')+(ids.length>8?`\n... y ${ids.length-8} más`:'');
+if(!confirm(`¿Eliminar DEFINITIVAMENTE ${ids.length} ticket(s)?\n\n${muestra}\n\nEsta acción no se puede deshacer.`)) return;
+const btn=document.getElementById('bulkDeleteBtn');
+btn.disabled=true;
+setSyncDot('busy');
+try{
+let borrados=0;
+for(let i=0;i<ids.length;i+=50){
+const lote=ids.slice(i,i+50);
+const lista=lote.map(id=>`"${id}"`).join(',');
+const r=await fetchWithTimeout(`${SB_URL}/rest/v1/tickets?id=in.(${encodeURIComponent(lista)})`,
+{method:'DELETE',headers:{...getHeaders(),'Prefer':'return=representation'}});
+if(!r.ok) throw new Error(await r.text());
+const eliminados=await r.json();
+// Solo quitamos del estado local lo que Supabase confirmó que eliminó
+const okIds=new Set(eliminados.map(x=>x.id));
+TICKETS=TICKETS.filter(t=>!okIds.has(t.id));
+okIds.forEach(id=>SELECTED.delete(id));
+borrados+=okIds.size;
+}
+setSyncDot('ok');
+if(borrados<ids.length) showToast(`Se eliminaron ${borrados} de ${ids.length}. Revisa la política DELETE en Supabase`);
+else showToast(`${borrados} ticket(s) eliminados`);
+}catch(e){
+setSyncDot('err');
+showToast('Error al eliminar: '+(e.message||e).toString().slice(0,80));
+}finally{
+btn.disabled=false;
+refreshAllViews();
+}
 }
 function setupTicketTableEvents(){
 document.getElementById('searchInput').addEventListener('input',renderTicketsTable);
@@ -1180,6 +1270,20 @@ renderTicketsTable();
 });
 });
 document.getElementById('reportBtn').addEventListener('click',generateReport);
+document.getElementById('ticketsTableBody').addEventListener('change',e=>{
+const cb=e.target.closest('input[type=checkbox][data-id]'); if(!cb) return;
+if(cb.checked) SELECTED.add(cb.dataset.id); else SELECTED.delete(cb.dataset.id);
+cb.closest('tr').classList.toggle('sel-row',cb.checked);
+updateBulkBar();
+});
+document.getElementById('selectAllChk').addEventListener('change',e=>{
+const list=getFiltered();
+if(e.target.checked) list.forEach(t=>SELECTED.add(t.id)); else list.forEach(t=>SELECTED.delete(t.id));
+renderTicketsTable();
+});
+document.getElementById('bulkClearBtn').addEventListener('click',()=>{SELECTED.clear();renderTicketsTable();});
+document.getElementById('bulkDeleteBtn').addEventListener('click',deleteSelected);
+document.getElementById('selectDupBtn').addEventListener('click',selectDuplicates);
 document.getElementById('teamReportBtn').addEventListener('click',generateTeamReport);
 document.getElementById('teamReportMonth').addEventListener('change',renderMetrics);
 }
