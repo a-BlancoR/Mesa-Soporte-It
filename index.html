@@ -344,6 +344,7 @@ tbody tr{cursor:pointer;}
 <button class="tab-btn active" data-view="dashboard">Tablero</button>
 <button class="tab-btn" data-view="tickets">Tickets</button>
 <button class="tab-btn" data-view="metrics">Productividad</button>
+<button class="tab-btn" data-view="bitacora">Bitácora</button>
 <button class="tab-btn" data-view="catalogs">Catálogos</button>
 </nav>
 
@@ -364,6 +365,7 @@ tbody tr{cursor:pointer;}
 <h2 class="section-title" style="font-size:15px;">Acción rápida</h2>
 <p style="font-size:13px;color:#54524a;margin-top:0;">Registra una solicitud directamente desde aquí.</p>
 <button class="btn" style="width:100%;" id="quickNewTicket">+ Nuevo ticket</button>
+<button class="btn secondary" style="width:100%;margin-top:8px;" id="quickMassTicket">+ Tickets masivos</button>
 </div>
 </div>
 </section>
@@ -414,8 +416,13 @@ tbody tr{cursor:pointer;}
 <button class="btn secondary" id="teamReportBtn">&#128202; Reporte comparativo</button>
 </div>
 </div>
-<div class="panel" id="exportPanel" style="margin-bottom:18px;">
-<h2 class="section-title" style="font-size:14px;margin-top:0;"><span class="eyebrow">Bitácora</span> Exportar a Excel</h2>
+<div id="metricsContainer"></div>
+</section>
+
+<section class="view" id="view-bitacora">
+<h2 class="section-title"><span class="eyebrow">Reportes</span> Bitácora</h2>
+<p style="font-size:12.5px;color:#6b6358;margin-top:-8px;">Filtra los tickets y descárgalos en Excel con el formato de la bitácora oficial.</p>
+<div class="panel" id="exportPanel">
 <div class="ex-grid">
 <div class="field"><label>Colaborador</label><select id="exTech"></select></div>
 <div class="field"><label>Estado</label><select id="exStatus"><option value="">Todos</option><option value="__done__">Terminados (Resuelto + Cerrado)</option><option>Abierto</option><option>En proceso</option><option>Resuelto</option><option>Cerrado</option></select></div>
@@ -432,7 +439,6 @@ tbody tr{cursor:pointer;}
 <div class="ex-preview" id="exPreview"></div>
 <button class="btn" id="exportXlsxBtn" type="button">&#11015; Exportar .xlsx</button>
 </div>
-<div id="metricsContainer"></div>
 </section>
 
 <section class="view" id="view-catalogs">
@@ -1133,7 +1139,7 @@ document.getElementById('clockDate').textContent=d.toLocaleDateString('es-MX',{w
 document.getElementById('clockTime').textContent=d.toLocaleTimeString('es-MX');
 }
 
-const VIEW_LABELS={dashboard:'Tablero',tickets:'Tickets',metrics:'Productividad',catalogs:'Catálogos'};
+const VIEW_LABELS={dashboard:'Tablero',tickets:'Tickets',metrics:'Productividad',bitacora:'Bitácora',catalogs:'Catálogos'};
 function setupTabs(){
 document.querySelectorAll('.tab-btn').forEach(btn=>{
 btn.addEventListener('click',()=>{
@@ -1146,6 +1152,7 @@ if(bc) bc.textContent=VIEW_LABELS[btn.dataset.view]||'';
 if(btn.dataset.view==='dashboard') renderDashboard();
 if(btn.dataset.view==='tickets') renderTicketsTable();
 if(btn.dataset.view==='metrics') renderMetrics();
+if(btn.dataset.view==='bitacora') renderExportPanel();
 if(btn.dataset.view==='catalogs') renderCatalogs();
 });
 });
@@ -1970,7 +1977,6 @@ _exExporting=false; btn.innerHTML=label; btn.disabled=false;
 }
 
 function renderMetrics(){
-renderExportPanel();
 populateReportMonths();
 const real=TECHS.filter(t=>!isProtectedName(t.name));
 if(!real.length){document.getElementById('metricsContainer').innerHTML=`<div class="panel"><p style="margin:0;color:#6b6358;font-family:var(--mono);font-size:12.5px;">Agrega colaboradores en Catálogos para ver sus métricas.</p></div>`;return;}
@@ -2131,6 +2137,7 @@ function refreshAllViews(){
 const active=document.querySelector('.tab-btn.active')?.dataset.view;
 renderDashboard();renderTicketsTable();
 if(active==='metrics') renderMetrics();
+if(active==='bitacora') renderExportPanel();
 if(active==='catalogs') renderCatalogs();
 syncBadge();
 }
@@ -2172,6 +2179,7 @@ setupTabs();setupTicketTableEvents();setupCatalogEvents();
 document.getElementById('openNewTicketBtn').addEventListener('click',openNewTicketModal);
 document.getElementById('openBulkTicketBtn').addEventListener('click',openMassTicketModal);
 document.getElementById('quickNewTicket').addEventListener('click',()=>{goToView('tickets');setTimeout(openNewTicketModal,50);});
+document.getElementById('quickMassTicket').addEventListener('click',()=>{goToView('tickets');setTimeout(openMassTicketModal,50);});
 document.getElementById('ticketOverlay').addEventListener('click',e=>{if(e.target.id==='ticketOverlay') closeModal();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape') closeModal();});
 document.getElementById('logoutBtn').addEventListener('click',()=>{isAdmin=false;SESSION=null;TICKETS=[];localStorage.removeItem(ADMIN_REFRESH_KEY);showUserScreen();});
