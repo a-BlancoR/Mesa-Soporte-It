@@ -179,6 +179,9 @@ tbody tr{cursor:pointer;}
 .loading-screen{position:fixed;inset:0;background:var(--paper);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;z-index:200;}
 .loading-screen .l1{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--accent);text-transform:uppercase;}
 .loading-screen .l2{font-family:var(--serif);font-size:20px;}
+.form-error{color:var(--crit);font-family:var(--mono);font-size:12px;min-height:16px;margin:4px 0 10px;}
+.cat-list .edit-btn{background:none;border:none;color:var(--accent);font-family:var(--mono);font-size:11px;margin-right:8px;}
+.cat-list .edit-btn:hover{text-decoration:underline;}
 .sync-dot{width:8px;height:8px;border-radius:50%;background:#aaa;display:inline-block;margin-left:8px;vertical-align:middle;}
 .sync-dot.ok{background:var(--ok);}
 .sync-dot.err{background:var(--crit);}
@@ -229,7 +232,6 @@ tbody tr{cursor:pointer;}
 </div>
 </div>
 </header>
-  <div class="inst-breadcrumb"><button class="crumb-home" id="ucHomeBtn" title="Volver al inicio">🏠</button>&nbsp; / &nbsp;Mesa de Ayuda&nbsp; / &nbsp;<span class="crumb current">Reportar un problema</span></div>
   <div class="inst-breadcrumb"><button class="crumb-home" id="ucHomeBtn" title="Volver al inicio">🏠</button>&nbsp; / &nbsp;Mesa de Ayuda&nbsp; / &nbsp;<span class="crumb current" id="ucBreadcrumbCurrent">Inicio</span></div>
 <div class="user-card-wrap">
     <div class="user-card" id="userCard">
@@ -524,10 +526,21 @@ localStorage.setItem(ADMIN_REFRESH_KEY,SESSION.refresh_token);
 return true;
 }catch(e){ return false; }
 }
+// Si el token está por vencer (o ya venció porque la pestaña estuvo en segundo plano),
+// se renueva antes de mandar la petición. _refreshing evita que 3 peticiones simultáneas
+// intenten renovarlo 3 veces al mismo tiempo.
+let _refreshing=null;
 async function ensureSession(){
 if(!SESSION) return false;
-if(Date.now()>SESSION.expires_at-120000) return await refreshSession();
+if(Date.now()>SESSION.expires_at-120000){
+if(!_refreshing) _refreshing=refreshSession().finally(()=>{_refreshing=null;});
+return await _refreshing;
+}
 return true;
+}
+async function authHeaders(){
+if(SESSION) await ensureSession();
+return getHeaders();
 }
 function getHeaders(){
 const token=SESSION&&SESSION.access_token?SESSION.access_token:SB_KEY;
@@ -583,29 +596,32 @@ clearTimeout(timer);
 async function sbGet(table,params){
 const order=table==='tickets'?'created_at.desc':'name.asc';
 const qs=buildQuery({...params,order});
-const r=await fetchWithTimeout(`${SB_URL}/rest/v1/${table}${qs}`,{headers:{...getHeaders(),'Prefer':'return=representation'}});
+const r=await fetchWithTimeout(`${SB_URL}/rest/v1/${table}${qs}`,{headers:{...(await authHeaders()),'Prefer':'return=representation'}});
 if(!r.ok) throw new Error(await r.text());
 return r.json();
 }
 async function sbPost(table,body,{representation=true}={}){
-const r=await fetchWithTimeout(`${SB_URL}/rest/v1/${table}`,{method:'POST',headers:{...getHeaders(),'Prefer':representation?'return=representation':'return=minimal'},body:JSON.stringify(body)});
+const r=await fetchWithTimeout(`${SB_URL}/rest/v1/${table}`,{method:'POST',headers:{...(await authHeaders()),'Prefer':representation?'return=representation':'return=minimal'},body:JSON.stringify(body)});
 if(!r.ok) throw new Error(await r.text());
+markChange();
 return representation?r.json():null;
 }
 async function sbPatch(table,match,body){
 const qs=buildQuery(Object.fromEntries(Object.entries(match).map(([k,v])=>[k,`eq.${v}`])));
-const r=await fetchWithTimeout(`${SB_URL}/rest/v1/${table}${qs}`,{method:'PATCH',headers:{...getHeaders(),'Prefer':'return=representation'},body:JSON.stringify(body)});
+const r=await fetchWithTimeout(`${SB_URL}/rest/v1/${table}${qs}`,{method:'PATCH',headers:{...(await authHeaders()),'Prefer':'return=representation'},body:JSON.stringify(body)});
 if(!r.ok) throw new Error(await r.text());
+markChange();
 return r.json();
 }
 async function sbDelete(table,match){
 const qs=buildQuery(Object.fromEntries(Object.entries(match).map(([k,v])=>[k,`eq.${v}`])));
-const r=await fetchWithTimeout(`${SB_URL}/rest/v1/${table}${qs}`,{method:'DELETE',headers:getHeaders()});
+const r=await fetchWithTimeout(`${SB_URL}/rest/v1/${table}${qs}`,{method:'DELETE',headers:await authHeaders()});
 if(!r.ok) throw new Error(await r.text());
+markChange();
 }
 async function nextId(){
 try{
-const r=await fetchWithTimeout(`${SB_URL}/rest/v1/rpc/nextval`,{method:'POST',headers:getHeaders(),body:JSON.stringify({sequence_name:'ticket_seq'})});
+const r=await fetchWithTimeout(`${SB_URL}/rest/v1/rpc/nextval`,{method:'POST',headers:await authHeaders(),body:JSON.stringify({sequence_name:'ticket_seq'})});
 if(!r.ok) return `TK-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
 const n=await r.json();
 return `TK-${new Date().getFullYear()}-${String(n).padStart(4,'0')}`;
@@ -618,6 +634,11 @@ let TICKETS=[],TECHS=[],DEPTS=[],REQUESTERS=[];
 const SELECTED=new Set(); // folios marcados para eliminación masiva
 let selectMode=false;     // true = se muestran las casillas
 let isAdmin=false;
+// DATA_VERSION sube cada vez que ESTE navegador guarda algo en Supabase.
+// El sondeo de cada 30 s anota la versión antes de descargar; si al terminar
+// la versión cambió, su copia ya es vieja y se descarta en vez de sobrescribir.
+let DATA_VERSION=0;
+function markChange(){DATA_VERSION++;}
 let MY_IDENTITY=localStorage.getItem('mesadeayuda_identity')||'';
 
 function setSyncDot(state){
@@ -972,7 +993,7 @@ function showLandingScreen(){
 /* ---- SEGUIMIENTO DE TICKET (público, sin login) ---- */
 async function sbGetPublic(view,params){
   const qs=buildQuery(params);
-  const r=await fetchWithTimeout(`${SB_URL}/rest/v1/${view}${qs}`,{headers:{...getHeaders(),'Prefer':'return=representation'}});
+  const r=await fetchWithTimeout(`${SB_URL}/rest/v1/${view}${qs}`,{headers:{...(await authHeaders()),'Prefer':'return=representation'}});
   if(!r.ok) throw new Error(await r.text());
   return r.json();
 }
@@ -1297,8 +1318,9 @@ for(let i=0;i<ids.length;i+=50){
 const lote=ids.slice(i,i+50);
 const lista=lote.map(id=>`"${id}"`).join(',');
 const r=await fetchWithTimeout(`${SB_URL}/rest/v1/tickets?id=in.(${encodeURIComponent(lista)})`,
-{method:'DELETE',headers:{...getHeaders(),'Prefer':'return=representation'}});
+{method:'DELETE',headers:{...(await authHeaders()),'Prefer':'return=representation'}});
 if(!r.ok) throw new Error(await r.text());
+markChange();
 const eliminados=await r.json();
 // Solo quitamos del estado local lo que Supabase confirmó que eliminó
 const okIds=new Set(eliminados.map(x=>x.id));
@@ -1448,8 +1470,8 @@ document.getElementById('newReqFields').style.display=v==='__new__'?'block':'non
 document.getElementById('reqDeptDisplay').value=v&&v!=='__new__'?(e.target.selectedOptions[0].dataset.dept||''):'';
 document.getElementById('newPuesto').value=v&&v!=='__new__'?(e.target.selectedOptions[0].dataset.puesto||''):'';
 });
-document.getElementById('closeModalBtn').addEventListener('click',closeModal);
-document.getElementById('cancelNewTicketBtn').addEventListener('click',closeModal);
+document.getElementById('closeModalBtn').addEventListener('click',requestCloseModal);
+document.getElementById('cancelNewTicketBtn').addEventListener('click',requestCloseModal);
 document.getElementById('saveNewTicketBtn').addEventListener('click',saveNewTicket);
 openModal();
 }
@@ -1495,9 +1517,12 @@ if(conflictRecord){
 return{status:'conflict'};
 }
 if(oldRecord){
-if(oldRecord.name!==newName||oldRecord.department!==newDept||(oldRecord.puesto||'')!==(newPuesto||'')){
-await sbPatch('requesters',{name:oldRecord.name},{name:newName,department:newDept,puesto:newPuesto||''});
-oldRecord.name=newName;oldRecord.department=newDept;oldRecord.puesto=newPuesto||'';
+// Solo se corrige el NOMBRE. El departamento/puesto actual de la persona se cambia
+// desde Catálogos → "Cambiar depto.", porque corregir un ticket viejo no significa
+// que la persona siga en ese departamento hoy.
+if(oldRecord.name!==newName){
+await sbPatch('requesters',{name:oldRecord.name},{name:newName});
+oldRecord.name=newName;
 }
 return{status:'updated'};
 }
@@ -1516,7 +1541,10 @@ if(!t) return;
 const techOpts=TECHS.map(tech=>`<option value="${escapeHtml(tech.name)}" ${tech.name===t.technician?'selected':''}>${escapeHtml(tech.name)}</option>`).join('');
 const statusOpts=['Abierto','En proceso','Resuelto','Cerrado'].map(s=>`<option ${s===t.status?'selected':''}>${s}</option>`).join('');
 const priorityOpts=['Baja','Media','Alta','Crítica'].map(p=>`<option ${p===t.priority?'selected':''}>${p}</option>`).join('');
-const deptOpts=DEPTS.map(d=>`<option ${d.name===t.department?'selected':''}>${escapeHtml(d.name)}</option>`).join('');
+// Si el depto. guardado en el ticket ya no está en el catálogo, se conserva como opción
+// para que el select no lo cambie en silencio al primer departamento de la lista.
+const deptOpts=DEPTS.map(d=>`<option ${d.name===t.department?'selected':''}>${escapeHtml(d.name)}</option>`).join('')+
+(t.department&&!DEPTS.some(d=>d.name===t.department)?`<option selected value="${escapeHtml(t.department)}">${escapeHtml(t.department)} (histórico)</option>`:'');
 const resTime=t.resolved_at?hoursBetween(t.created_at,t.resolved_at):null;
 document.getElementById('ticketModal').innerHTML=`
    <button class="modal-close" id="closeModalBtn">&times;</button>
@@ -1524,7 +1552,7 @@ document.getElementById('ticketModal').innerHTML=`
    <div class="modal-sub">Datos del solicitante editables por el administrador</div>
    <div class="grid2">
      <div class="field"><label>Solicitante</label><input type="text" id="editRequester" value="${escapeHtml(t.requester)}"></div>
-     <div class="field"><label>Departamento</label><select id="editDepartment">${deptOpts}</select></div>
+     <div class="field"><label>Departamento (de este ticket)</label><select id="editDepartment">${deptOpts}</select></div>
    </div>
    <div class="grid2">
      <div class="field"><label>Puesto</label><input type="text" id="editPuesto" value="${escapeHtml(t.puesto||'')}"></div>
@@ -1547,6 +1575,7 @@ document.getElementById('ticketModal').innerHTML=`
      <div class="field"><label>Solución aplicada * <span style="font-weight:400;color:#6b6358;">(aparece como "Observaciones" en la bitácora)</span></label><textarea id="editSolucion" rows="3" placeholder="Describe qué se hizo para resolver el problema…">${escapeHtml(t.solucion||'')}</textarea></div>
    </div>
    <hr class="divider">
+   <div class="form-error" id="modalError"></div>
    <div class="btn-row">
      <button class="btn" id="saveTicketEditBtn">Guardar cambios</button>
      <button class="btn secondary" id="closeModalBtn2">Cerrar</button>
@@ -1568,19 +1597,24 @@ if(!isResolved) editResolvedAt.value='';
 }
 toggleResolveFields();
 statusSel.addEventListener('change',toggleResolveFields);
-document.getElementById('closeModalBtn').addEventListener('click',closeModal);
-document.getElementById('closeModalBtn2').addEventListener('click',closeModal);
+document.getElementById('closeModalBtn').addEventListener('click',requestCloseModal);
+document.getElementById('closeModalBtn2').addEventListener('click',requestCloseModal);
 document.getElementById('saveTicketEditBtn').addEventListener('click',async()=>{
+if(modalSaving) return; // evita doble clic
+const saveBtn=document.getElementById('saveTicketEditBtn');
 const newStatus=statusSel.value;
 const newRequester=toTitleCase(document.getElementById('editRequester').value.trim());
 const newDescription=document.getElementById('editDescription').value.trim();
-if(!newRequester){showToast('El solicitante no puede quedar vacío');return;}
-if(!newDescription){showToast('La descripción no puede quedar vacía');return;}
+if(!newRequester){showModalError('El solicitante no puede quedar vacío');return;}
+if(!newDescription){showModalError('La descripción no puede quedar vacía');return;}
 const cierra=newStatus==='Resuelto'||newStatus==='Cerrado';
 const newSolucion=document.getElementById('editSolucion').value.trim();
 const newAsunto=document.getElementById('editAsunto').value.trim();
-if(cierra&&!newAsunto){showToast('Anota el asunto (resumen corto) del ticket');document.getElementById('editAsunto').focus();return;}
-if(cierra&&!newSolucion){showToast('Anota la solución aplicada para cerrar el ticket');document.getElementById('editSolucion').focus();return;}
+if(cierra&&!newAsunto){showModalError('Falta el asunto (resumen corto) para cerrar el ticket');document.getElementById('editAsunto').focus();return;}
+if(cierra&&!newSolucion){showModalError('Falta la solución aplicada para cerrar el ticket');document.getElementById('editSolucion').focus();return;}
+// Partimos de la copia MÁS RECIENTE del ticket: si el sondeo reemplazó la lista
+// mientras la ventana estaba abierta, "t" apunta a un objeto viejo.
+const base=TICKETS.find(x=>x.id===t.id)||t;
 const updates={
 requester:newRequester,
 department:document.getElementById('editDepartment').value,
@@ -1591,37 +1625,52 @@ priority:document.getElementById('editPriority').value,
 status:newStatus,
 technician:document.getElementById('editTechnician').value||''
 };
-if(cierra){updates.solucion=newSolucion;updates.asunto=newAsunto;}
-if(newStatus==='Resuelto'||newStatus==='Cerrado'){
+if(cierra){
+updates.solucion=newSolucion;updates.asunto=newAsunto;
 const rv=editResolvedAt.value;
-updates.resolved_at=rv?new Date(rv).toISOString():(t.resolved_at||new Date().toISOString());
+updates.resolved_at=rv?new Date(rv).toISOString():(base.resolved_at||new Date().toISOString());
 } else {updates.resolved_at=null;}
 const changeNotes=[];
-const requesterChanged=newRequester!==t.requester;
-const deptChanged=updates.department!==t.department;
+const requesterChanged=newRequester!==base.requester;
 if(requesterChanged) changeNotes.push(`Solicitante corregido a "${newRequester}"`);
-if(deptChanged) changeNotes.push(`Depto. corregido a "${updates.department}"`);
-if(newDescription!==t.description) changeNotes.push('Descripción editada');
-if(cierra&&newSolucion!==(t.solucion||'')) changeNotes.push('Solución registrada');
+if(updates.department!==base.department) changeNotes.push(`Depto. corregido a "${updates.department}"`);
+if(newDescription!==base.description) changeNotes.push('Descripción editada');
+if(cierra&&newSolucion!==(base.solucion||'')) changeNotes.push('Solución registrada');
 changeNotes.push(`Actualizado: ${newStatus}`);
-updates.log=[...(t.log||[]),{at:new Date().toISOString(),text:changeNotes.join(' · ')}];
-setSyncDot('busy');
+updates.log=[...(base.log||[]),{at:new Date().toISOString(),text:changeNotes.join(' · ')}];
+
+modalSaving=true; saveBtn.disabled=true; saveBtn.textContent='Guardando…'; setSyncDot('busy');
+try{
 let catalogResult=null;
-const puestoChanged=(updates.puesto||'')!==(t.puesto||'');
-if(requesterChanged||deptChanged||puestoChanged){
-catalogResult=await syncRequesterCatalog(t.requester,newRequester,updates.department,updates.puesto);
+if(requesterChanged){
+try{ catalogResult=await syncRequesterCatalog(base.requester,newRequester,updates.department,updates.puesto); }
+catch(e){ console.error('Catálogo de solicitantes:',e); }
 }
-await sbPatch('tickets',{id:t.id},updates); Object.assign(t,updates); setSyncDot('ok');
+const rows=await sbPatch('tickets',{id:t.id},updates);
+// Supabase responde 200 con [] si una política RLS bloqueó el cambio: eso NO es éxito.
+if(!Array.isArray(rows)||!rows.length) throw new Error('Supabase no confirmó el cambio (sesión vencida o permiso UPDATE en "tickets").');
+// Reemplazamos el ticket DENTRO de la lista actual con lo que devolvió el servidor.
+const fresh={...base,...updates,...rows[0]};
+const idx=TICKETS.findIndex(x=>x.id===t.id);
+if(idx>=0) TICKETS[idx]=fresh; else TICKETS.unshift(fresh);
+setSyncDot('ok'); modalSaving=false;
 closeModal(); refreshAllViews();
-if(catalogResult&&catalogResult.status==='conflict'){
-showToast(`Ticket ${t.id} actualizado. Aviso: ya existe otro solicitante con ese nombre, revisa el catálogo`);
-} else {
-showToast(`Ticket ${t.id} actualizado`);
+showToast(catalogResult&&catalogResult.status==='conflict'
+?`Ticket ${t.id} actualizado. Aviso: ya existe otro solicitante con ese nombre, revisa el catálogo`
+:`Ticket ${t.id} actualizado`);
+}catch(e){
+console.error(e);
+modalSaving=false; setSyncDot('err');
+saveBtn.disabled=false; saveBtn.textContent='Guardar cambios';
+showModalError('No se guardó: '+String(e.message||e).slice(0,160));
 }
 });
 document.getElementById('deleteTicketBtn').addEventListener('click',async()=>{
 if(!confirm(`¿Eliminar definitivamente el ticket ${t.id}?`)) return;
-setSyncDot('busy'); await sbDelete('tickets',{id:t.id}); TICKETS=TICKETS.filter(x=>x.id!==t.id); setSyncDot('ok');
+setSyncDot('busy');
+try{ await sbDelete('tickets',{id:t.id}); }
+catch(e){ setSyncDot('err'); showModalError('No se pudo eliminar: '+String(e.message||e).slice(0,140)); return; }
+TICKETS=TICKETS.filter(x=>x.id!==t.id); setSyncDot('ok');
 closeModal(); showToast(`Ticket ${t.id} eliminado`); refreshAllViews();
 });
 openModal();
@@ -1703,8 +1752,8 @@ if(wrap.children.length===1&&!wrap.querySelector('textarea').value.trim()) wrap.
 lines.forEach(l=>massAddRow(l));
 ta.value='';
 });
-document.getElementById('closeModalBtn').addEventListener('click',()=>{if(!massSubmitting)closeModal();});
-document.getElementById('massCancelBtn').addEventListener('click',()=>{if(!massSubmitting)closeModal();});
+document.getElementById('closeModalBtn').addEventListener('click',requestCloseModal);
+document.getElementById('massCancelBtn').addEventListener('click',requestCloseModal);
 document.getElementById('massSaveBtn').addEventListener('click',saveMassTickets);
 openModal();
 }
@@ -1761,8 +1810,23 @@ refreshAllViews();
 }
 }
 
-function openModal(){document.getElementById('ticketOverlay').classList.add('active');}
-function closeModal(){document.getElementById('ticketOverlay').classList.remove('active');}
+// modalDirty = el usuario escribió o cambió algo en la ventana abierta.
+// modalSaving = hay un guardado en curso (no se permite cerrar a la mitad).
+let modalDirty=false, modalSaving=false;
+function openModal(){modalDirty=false;modalSaving=false;document.getElementById('ticketOverlay').classList.add('active');}
+// Cierre "programático": se usa después de guardar con éxito.
+function closeModal(){modalDirty=false;document.getElementById('ticketOverlay').classList.remove('active');}
+// Cierre pedido por el usuario (X, Cancelar, Cerrar, tecla Esc).
+function requestCloseModal(){
+if(modalSaving||massSubmitting) return;
+if(modalDirty&&!confirm('Tienes datos capturados sin guardar.\n\n¿Cerrar la ventana y descartarlos?')) return;
+closeModal();
+}
+function showModalError(msg){
+const el=document.getElementById('modalError');
+if(el) el.textContent=msg;
+showToast(msg);
+}
 
 /* ---- METRICS ---- */
 function populateReportMonths(){
@@ -2109,8 +2173,11 @@ function renderUserList(){
 document.getElementById('userList').innerHTML=REQUESTERS.map(({name,department,puesto})=>{
 const used=TICKETS.filter(t=>t.requester===name).length;
 const puestoTag=puesto?` · ${escapeHtml(puesto)}`:'';
-return `<li><span>${escapeHtml(name)} <span class="tag">(${escapeHtml(department)}${puestoTag} · ${used} ticket${used!==1?'s':''})</span></span><button class="remove-btn" data-name="${escapeHtml(name)}">Quitar</button></li>`;
+return `<li><span>${escapeHtml(name)} <span class="tag">(${escapeHtml(department)}${puestoTag} · ${used} ticket${used!==1?'s':''})</span></span><span style="white-space:nowrap;"><button class="edit-btn" data-name="${escapeHtml(name)}">Cambiar depto.</button><button class="remove-btn" data-name="${escapeHtml(name)}">Quitar</button></span></li>`;
 }).join('');
+document.querySelectorAll('#userList .edit-btn').forEach(btn=>{
+btn.addEventListener('click',()=>openRequesterMoveModal(btn.dataset.name));
+});
 document.querySelectorAll('#userList .remove-btn').forEach(btn=>{
 btn.addEventListener('click',async()=>{
 const name=btn.dataset.name;
@@ -2120,6 +2187,72 @@ renderCatalogs();showToast(`"${name}" eliminado`);
 });
 });
 }
+/* ---- Cambiar a una persona de departamento ----
+   Cada ticket guarda una COPIA del departamento y puesto que tenía la persona el día
+   que se creó (columnas department/puesto de "tickets"). Aquí solo se cambia el
+   catálogo "requesters", que es lo que se usa para los tickets NUEVOS; los anteriores
+   no se tocan, así las métricas por departamento del pasado siguen siendo correctas. */
+function openRequesterMoveModal(name){
+const r=REQUESTERS.find(x=>x.name===name);
+if(!r) return;
+const prev=TICKETS.filter(t=>t.requester===r.name).length;
+const opts=DEPTS.filter(d=>!isProtectedName(d.name)).map(d=>`<option value="${escapeHtml(d.name)}" ${d.name===r.department?'selected':''}>${escapeHtml(d.name)}</option>`).join('');
+document.getElementById('ticketModal').innerHTML=`
+   <button class="modal-close" id="closeModalBtn">&times;</button>
+   <h3>Cambiar de departamento</h3>
+   <div class="modal-sub">${escapeHtml(r.name)} · actualmente en ${escapeHtml(r.department||'—')}</div>
+   <div class="field"><label>Nuevo departamento</label>
+     <select id="mvDept">${opts}<option value="__new__">+ Crear departamento nuevo…</option></select>
+     <div id="mvNewDeptWrap" style="display:none;margin-top:8px;"><input type="text" id="mvNewDept" placeholder="Nombre del departamento nuevo"></div>
+   </div>
+   <div class="field"><label>Puesto</label><input type="text" id="mvPuesto" value="${escapeHtml(r.puesto||'')}" placeholder="Puesto o cargo"></div>
+   <p class="small-note">Sus ${prev} ticket${prev===1?'':'s'} anterior${prev===1?'':'es'} conservan el departamento y puesto que tenían al crearse. Solo los tickets nuevos usarán los datos actualizados.</p>
+   <hr class="divider">
+   <div class="form-error" id="modalError"></div>
+   <div class="btn-row"><button class="btn" id="mvSaveBtn">Guardar cambio</button><button class="btn secondary" id="mvCancelBtn">Cancelar</button></div>`;
+const sel=document.getElementById('mvDept');
+sel.addEventListener('change',()=>{
+const isNew=sel.value==='__new__';
+document.getElementById('mvNewDeptWrap').style.display=isNew?'block':'none';
+if(isNew) document.getElementById('mvNewDept').focus();
+});
+document.getElementById('closeModalBtn').addEventListener('click',requestCloseModal);
+document.getElementById('mvCancelBtn').addEventListener('click',requestCloseModal);
+document.getElementById('mvSaveBtn').addEventListener('click',async()=>{
+if(modalSaving) return;
+const btn=document.getElementById('mvSaveBtn');
+let dept=sel.value;
+if(dept==='__new__'){
+dept=toTitleCase(document.getElementById('mvNewDept').value.trim());
+if(!dept){showModalError('Escribe el nombre del departamento nuevo');return;}
+}
+const puesto=toTitleCase(document.getElementById('mvPuesto').value.trim());
+// Si escribieron un depto. que ya existe (con otras mayúsculas), se usa el existente.
+const existing=DEPTS.find(d=>d.name.toLowerCase()===dept.toLowerCase());
+if(existing) dept=existing.name;
+if(dept===r.department&&puesto===(r.puesto||'')){showModalError('No hay cambios que guardar');return;}
+modalSaving=true; btn.disabled=true; btn.textContent='Guardando…'; setSyncDot('busy');
+try{
+if(!existing){ await sbPost('departments',{name:dept}); DEPTS.push({name:dept}); }
+const rows=await sbPatch('requesters',{name:r.name},{department:dept,puesto});
+if(!Array.isArray(rows)||!rows.length) throw new Error('Supabase no confirmó el cambio (permiso UPDATE en "requesters").');
+const oldDept=r.department;
+r.department=dept; r.puesto=puesto;
+setSyncDot('ok'); modalSaving=false;
+closeModal(); renderCatalogs();
+showToast(oldDept!==dept
+?`${r.name} ahora está en "${dept}". Sus ${prev} ticket(s) anteriores no cambiaron`
+:`Puesto de ${r.name} actualizado`);
+}catch(e){
+console.error(e);
+modalSaving=false; setSyncDot('err');
+btn.disabled=false; btn.textContent='Guardar cambio';
+showModalError('No se guardó: '+String(e.message||e).slice(0,160));
+}
+});
+openModal();
+}
+
 function setupCatalogEvents(){
 async function addItem(inputId,list,table,makeObj,refresh,transform=n=>n){
 const input=document.getElementById(inputId);
@@ -2173,8 +2306,9 @@ if(pollingStarted) return;
 pollingStarted=true;
 setInterval(async()=>{
 try{
+const v0=DATA_VERSION;
 const[tc,d,r]=await Promise.all([sbGet('technicians'),sbGet('departments'),sbGet('requesters')]);
-TECHS=tc;DEPTS=d;REQUESTERS=r;
+if(v0===DATA_VERSION){TECHS=tc;DEPTS=d;REQUESTERS=r;}
 if(isAdmin){
 const ok=await ensureSession();
 if(!ok){
@@ -2186,7 +2320,10 @@ showToast('Tu sesión expiró. Inicia sesión de nuevo.');
 setSyncDot('err');
 return;
 }
+const v1=DATA_VERSION;
 const t=await sbGet('tickets');
+// Se guardó algo mientras se descargaba: esta lectura puede ser anterior al cambio.
+if(v1!==DATA_VERSION){setSyncDot('ok');return;}
 const knownIds=new Set(TICKETS.map(x=>x.id));
 const newTickets=t.filter(x=>!knownIds.has(x.id));
 TICKETS=t;
@@ -2238,7 +2375,6 @@ document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='
 
 // Eventos usuario
   document.getElementById('ucSubmitBtn').addEventListener('click',submitUserTicket);
-  document.getElementById('ucHomeBtn').addEventListener('click',resetUserForm);
   document.getElementById('ucHomeBtn').addEventListener('click',showLandingScreen);
 
 // Eventos admin shell
@@ -2247,8 +2383,11 @@ document.getElementById('openNewTicketBtn').addEventListener('click',openNewTick
 document.getElementById('openBulkTicketBtn').addEventListener('click',openMassTicketModal);
 document.getElementById('quickNewTicket').addEventListener('click',()=>{goToView('tickets');setTimeout(openNewTicketModal,50);});
 document.getElementById('quickMassTicket').addEventListener('click',()=>{goToView('tickets');setTimeout(openMassTicketModal,50);});
-document.getElementById('ticketOverlay').addEventListener('click',e=>{if(e.target.id==='ticketOverlay') closeModal();});
-document.addEventListener('keydown',e=>{if(e.key==='Escape') closeModal();});
+// Ya NO se cierra la ventana al hacer clic en el fondo oscuro: se perdía lo capturado.
+const tm=document.getElementById('ticketModal');
+tm.addEventListener('input',()=>{modalDirty=true;});
+tm.addEventListener('change',()=>{modalDirty=true;});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('ticketOverlay').classList.contains('active')) requestCloseModal();});
 document.getElementById('logoutBtn').addEventListener('click',()=>{isAdmin=false;SESSION=null;TICKETS=[];localStorage.removeItem(ADMIN_REFRESH_KEY);showUserScreen();});
 document.getElementById('identityBtn').addEventListener('click',openIdentityPicker);
 document.getElementById('identityCloseBtn').addEventListener('click',hideIdentityPicker);
