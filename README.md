@@ -17,6 +17,7 @@ como app (PWA), con base de datos en Supabase y notificaciones push.
 | `sql/sql-push-subscriptions-authenticated.sql` | Script (ya ejecutado) con los permisos para el administrador con sesión iniciada. |
 | `sql/2026-10-29-paso1-endurecer-rls.sql` | Seguridad: solo las cuentas de la tabla `admins` administran; el público solo crea tickets "Abierto/Media", lee catálogos y busca con `buscar_tickets()`. |
 | `sql/2026-10-29-paso2-quitar-ticket-lookup.sql` | Elimina la vista `ticket_lookup`. Ejecutar **después** de publicar el `index.html` que usa `buscar_tickets()`. |
+| `sql/2026-10-29-paso3-folios-automaticos.sql` | El folio lo asigna la base de datos al guardar (trigger `asignar_folio`), saltando folios ya ocupados. El formulario público usa `crear_ticket()`. |
 
 ## Administradores
 
@@ -33,4 +34,6 @@ select id, email from auth.users where email = 'correo@ejemplo.com';
 - **Cada ticket guarda una copia** del departamento y puesto que tenía el solicitante el día
   que se creó. Cambiar a una persona de departamento (Catálogos → *Cambiar depto.*) solo
   afecta a sus tickets nuevos; el historial y las métricas pasadas no cambian.
+- **El folio lo pone la base de datos**, nunca la app: `TK-<año de registro>-<número>`, con un
+  contador continuo que salta los folios que ya existan. Editar fechas de un ticket no cambia su folio.
 - Al subir cambios a `sw.js`, aumentar el número de `CACHE_NAME` (`mesa-ayuda-v2` → `v3`…).

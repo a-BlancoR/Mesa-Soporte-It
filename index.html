@@ -619,16 +619,8 @@ const r=await fetchWithTimeout(`${SB_URL}/rest/v1/${table}${qs}`,{method:'DELETE
 if(!r.ok) throw new Error(await r.text());
 markChange();
 }
-async function nextId(){
-try{
-const r=await fetchWithTimeout(`${SB_URL}/rest/v1/rpc/nextval`,{method:'POST',headers:await authHeaders(),body:JSON.stringify({sequence_name:'ticket_seq'})});
-if(!r.ok) return `TK-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
-const n=await r.json();
-return `TK-${new Date().getFullYear()}-${String(n).padStart(4,'0')}`;
-}catch(e){
-return `TK-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
-}
-}
+// (Se eliminó nextId(): el folio ahora lo asigna la base de datos al guardar.
+//  Ver sql/2026-10-29-paso3-folios-automaticos.sql)
 
 let TICKETS=[],TECHS=[],DEPTS=[],REQUESTERS=[];
 const SELECTED=new Set(); // folios marcados para eliminación masiva
@@ -947,15 +939,21 @@ existing.department=department;
 }
 }
 
-const id=await nextId();
+// Una sola petición: el servidor (función crear_ticket) guarda el ticket, le
+// asigna el folio con el contador y nos lo devuelve. Antes eran dos peticiones
+// (pedir número + guardar) y, si la primera fallaba, la app INVENTABA un folio
+// que después podía chocar con uno existente.
 const tech=techValue==='__none__'?'':techValue;
-const ticket={
-id,requester,department,description,puesto,contacto,
-priority:'Media',status:'Abierto',technician:tech,
-created_at:new Date().toISOString(),resolved_at:null,
-log:[{at:new Date().toISOString(),text:'Ticket creado por usuario'}]
-};
-await sbPost('tickets',ticket,{representation:false});
+markChange();
+const res=await sbRpc('crear_ticket',{
+p_requester:requester,p_department:department,p_puesto:puesto,
+p_contacto:contacto,p_description:description,p_technician:tech
+});
+const fila=Array.isArray(res)?res[0]:res;
+if(!fila||!fila.id) throw new Error('El servidor no devolvió el folio del ticket.');
+const id=fila.id;
+const ticket={id,requester,department,description,puesto,contacto,
+priority:'Media',status:'Abierto',technician:tech,created_at:fila.created_at,resolved_at:null};
 sendTicketEmail(ticket);
 
 document.getElementById('userCard').innerHTML=`
@@ -1552,9 +1550,13 @@ if(isNewReq&&!REQUESTERS.some(r=>r.name.toLowerCase()===requester.toLowerCase())
 try{ await sbPost('requesters',{name:requester,department,puesto}); REQUESTERS.push({name:requester,department,puesto}); }
 catch(e){ console.error('No se pudo agregar al solicitante al catálogo:',e); }
 }
-const id=await nextId();
-const ticket={id,requester,department,puesto,contacto,description,priority:document.getElementById('newPriority').value,status:'Abierto',technician:document.getElementById('newTechnician').value||'',created_at:new Date(createdRaw).toISOString(),resolved_at:null,log:[{at:new Date().toISOString(),text:'Ticket creado'}]};
-await sbPost('tickets',ticket);
+// Sin "id": la base de datos asigna el folio (trigger asignar_folio) y lo
+// devolvemos con return=representation, que el admin sí puede leer.
+const nuevo={requester,department,puesto,contacto,description,priority:document.getElementById('newPriority').value,status:'Abierto',technician:document.getElementById('newTechnician').value||'',created_at:new Date(createdRaw).toISOString(),resolved_at:null,log:[{at:new Date().toISOString(),text:'Ticket creado'}]};
+const filas=await sbPost('tickets',nuevo);
+const ticket=Array.isArray(filas)&&filas[0];
+if(!ticket||!ticket.id) throw new Error('Supabase no devolvió el ticket creado.');
+const id=ticket.id;
 TICKETS.unshift(ticket);
 setSyncDot('ok'); modalSaving=false;
 sendTicketEmail(ticket);
@@ -1850,13 +1852,15 @@ let creados=0; const folios=[];
 try{
 for(let i=0;i<descs.length;i++){
 btn.textContent=`Creando ${i+1} de ${descs.length}…`;
-const id=await nextId();
 const ahora=new Date().toISOString();
-const ticket={id,requester,department,puesto,contacto,description:descs[i],priority,status:'Abierto',technician,
+// Sin "id": el folio lo asigna la base de datos y viene en la respuesta.
+const nuevo={requester,department,puesto,contacto,description:descs[i],priority,status:'Abierto',technician,
 created_at:new Date(createdRaw).toISOString(),resolved_at:null,
 log:[{at:ahora,text:`Ticket creado (carga masiva ${i+1} de ${descs.length})`}]};
-await sbPost('tickets',ticket);
-TICKETS.unshift(ticket); creados++; folios.push(id);
+const filas=await sbPost('tickets',nuevo);
+const ticket=Array.isArray(filas)&&filas[0];
+if(!ticket||!ticket.id) throw new Error('Supabase no devolvió el ticket creado.');
+TICKETS.unshift(ticket); creados++; folios.push(ticket.id);
 sendTicketEmail(ticket);
 await new Promise(r=>setTimeout(r,1100)); // pausa: EmailJS limita ~1 correo/seg
 }
