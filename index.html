@@ -1038,9 +1038,12 @@ function showLandingScreen(){
 }
 
 /* ---- SEGUIMIENTO DE TICKET (público, sin login) ---- */
-async function sbGetPublic(view,params){
-  const qs=buildQuery(params);
-  const r=await fetchWithTimeout(`${SB_URL}/rest/v1/${view}${qs}`,{headers:{...(await authHeaders()),'Prefer':'return=representation'}});
+// Llama a una función de Postgres expuesta por Supabase (POST /rest/v1/rpc/<nombre>).
+// La búsqueda pública ya no consulta la tabla/vista directamente: la función
+// buscar_tickets() decide en el servidor qué se puede ver (folio exacto o nombre
+// completo exacto) y solo devuelve folio, estado y prioridad.
+async function sbRpc(fn,args){
+  const r=await fetchWithTimeout(`${SB_URL}/rest/v1/rpc/${fn}`,{method:'POST',headers:await authHeaders(),body:JSON.stringify(args||{})});
   if(!r.ok) throw new Error(await r.text());
   return r.json();
 }
@@ -1075,20 +1078,15 @@ async function searchTicketTracking(){
   btn.disabled=true;btn.textContent='Buscando…';
   box.innerHTML='';
   try{
-    let results=[];
+    // Folio (1-4 dígitos; en enero también busca el año anterior) o nombre completo:
+    // la lógica vive ahora en la función buscar_tickets() del servidor.
     const isFolioQuery=/^\d{1,4}$/.test(raw);
-    if(isFolioQuery){
-      const digits=raw.padStart(4,'0');
-      const now=new Date();
-      const years=[now.getFullYear()];
-      // En enero también buscamos diciembre del año anterior, por si el ticket se generó justo antes del cambio de año.
-      if(now.getMonth()===0) years.push(now.getFullYear()-1);
-      const orClause=years.map(y=>`id.eq.TK-${y}-${digits}`).join(',');
-      results=await sbGetPublic('ticket_lookup',{or:`(${orClause})`,order:'id.desc'});
-    } else {
-      results=await sbGetPublic('ticket_lookup',{requester:`ilike.*${raw}*`,order:'id.desc'});
+    if(!isFolioQuery&&raw.length<5){
+      box.innerHTML='<p class="small-note" style="margin-top:14px;">Escribe tu nombre completo (como lo registraste) o los últimos 4 dígitos de tu folio.</p>';
+      return;
     }
-    renderTrackResults(results);
+    const results=await sbRpc('buscar_tickets',{consulta:raw});
+    renderTrackResults(Array.isArray(results)?results:[]);
   }catch(e){
     console.error(e);
     box.innerHTML='<p class="small-note" style="margin-top:14px;">No se pudo realizar la búsqueda. Verifica tu conexión e intenta de nuevo.</p>';
@@ -1100,7 +1098,7 @@ async function searchTicketTracking(){
 function renderTrackResults(results){
   const box=document.getElementById('trackResults');
   if(!results.length){
-    box.innerHTML='<p class="small-note" style="margin-top:14px;">No se encontró ningún ticket con esos datos.</p>';
+    box.innerHTML='<p class="small-note" style="margin-top:14px;">No se encontró ningún ticket con esos datos. Si buscaste por nombre, escríbelo completo, tal como aparece en la lista al reportar.</p>';
     return;
   }
   box.innerHTML='<hr class="divider">'+results.map(t=>`
