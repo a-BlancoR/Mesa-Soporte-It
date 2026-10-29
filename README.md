@@ -15,6 +15,18 @@ como app (PWA), con base de datos en Supabase y notificaciones push.
 | `supabase/functions/send-push/index.ts` | Función de Supabase que envía las notificaciones push al crear o actualizar un ticket. No corre en GitHub Pages: se despliega en Supabase. |
 | `sql/sql-push-subscriptions.sql` | Script (ya ejecutado) que creó la tabla de suscripciones push. Se guarda como referencia. |
 | `sql/sql-push-subscriptions-authenticated.sql` | Script (ya ejecutado) con los permisos para el administrador con sesión iniciada. |
+| `sql/2026-10-29-paso1-endurecer-rls.sql` | Seguridad: solo las cuentas de la tabla `admins` administran; el público solo crea tickets "Abierto/Media", lee catálogos y busca con `buscar_tickets()`. |
+| `sql/2026-10-29-paso2-quitar-ticket-lookup.sql` | Elimina la vista `ticket_lookup`. Ejecutar **después** de publicar el `index.html` que usa `buscar_tickets()`. |
+
+## Administradores
+
+Iniciar sesión **no basta** para administrar: la cuenta debe estar en la tabla `admins`.
+Para dar de alta una cuenta nueva (después de crearla en Authentication → Users):
+
+```sql
+insert into public.admins (user_id, nota)
+select id, email from auth.users where email = 'correo@ejemplo.com';
+```
 
 ## Reglas de diseño importantes
 
