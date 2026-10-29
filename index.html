@@ -1050,10 +1050,10 @@ function showTrackingScreen(){
   document.getElementById('ucBreadcrumbCurrent').textContent='Seguimiento de ticket';
   document.getElementById('userCard').innerHTML=`
     <h2>Seguimiento de ticket</h2>
-    <div class="uc-sub">Busca por tu nombre completo o por los últimos 4 dígitos de tu folio (sin escribir "TK-${new Date().getFullYear()}-").</div>
+    <div class="uc-sub">Busca por tu nombre completo, por tu folio completo (TK-${new Date().getFullYear()}-0043) o solo por sus últimos 4 dígitos.</div>
     <div class="field">
       <label>Nombre completo o folio</label>
-      <input type="text" id="trackQuery" placeholder="Ej. Juan Pérez  ó  0043">
+      <input type="text" id="trackQuery" placeholder="Ej. Juan Pérez  ó  0043  ó  TK-2026-0043">
     </div>
     <div class="btn-row">
       <button class="btn" id="trackSearchBtn" style="width:100%;">Buscar</button>
@@ -2472,6 +2472,39 @@ startPolling();
 }
 
 attemptInitialLoad();
+
+/* ---- AVISO DE VERSIÓN NUEVA ----
+   Una pestaña (o la app instalada) puede quedarse abierta horas o días sin
+   recargarse, y seguir usando código viejo aunque en GitHub ya haya cambios.
+   Cada 5 minutos, y al volver a la pestaña, se descarga el index.html publicado
+   (sin caché) y se compara su APP_VERSION con la de esta pestaña. Si cambió,
+   se muestra un botón para recargar. Al publicar cambios, SUBE APP_VERSION. */
+const APP_VERSION='2026-10-29.4';
+let _avisoVersion=false;
+async function revisarVersionNueva(){
+if(_avisoVersion) return;
+try{
+const r=await fetch('./index.html',{cache:'no-store'});
+if(!r.ok) return;
+const m=(await r.text()).match(/const APP_VERSION='([^']+)'/);
+if(m&&m[1]!==APP_VERSION) mostrarAvisoVersion();
+}catch(e){ /* sin red: se intenta en la siguiente revisión */ }
+}
+function mostrarAvisoVersion(){
+_avisoVersion=true;
+const b=document.createElement('button');
+b.type='button'; b.className='btn';
+b.textContent='🔄 Hay una versión nueva de la Mesa de Ayuda — toca para actualizar';
+b.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:400;box-shadow:0 6px 24px rgba(0,0,0,.25);max-width:92vw;';
+// Si hay una ventana abierta con datos capturados, no recargamos de golpe.
+b.addEventListener('click',()=>{
+if(typeof modalDirty!=='undefined'&&modalDirty&&!confirm('Tienes datos sin guardar. ¿Actualizar de todos modos?')) return;
+location.reload();
+});
+document.body.appendChild(b);
+}
+setInterval(revisarVersionNueva,5*60*1000);
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') revisarVersionNueva(); });
 
 if('serviceWorker' in navigator){
 window.addEventListener('load',()=>{
