@@ -861,7 +861,24 @@ if(puestoInput) puestoInput.value='';
 };
 }
 
+// Candado contra doble clic: mientras una solicitud se está enviando, un segundo
+// toque al botón no hace nada (antes podía crear dos tickets iguales).
+let userSubmitting=false;
+// Muestra el error DENTRO del formulario, arriba del botón. El toast desaparece en
+// 2.4 s y un mensaje largo no alcanza a leerse; este se queda hasta el siguiente intento.
+function showUserFormError(msg){
+let el=document.getElementById('ucFormError');
+const row=document.getElementById('ucSubmitBtn')?.closest('.btn-row');
+if(!el&&row){
+el=document.createElement('div');
+el.id='ucFormError'; el.className='form-error';
+row.parentNode.insertBefore(el,row);
+}
+if(el) el.textContent=msg||'';
+}
 async function submitUserTicket(){
+if(userSubmitting) return;
+showUserFormError('');
 const sel=document.getElementById('ucUserSelect');
 const deptSel=document.getElementById('ucDeptSelect');
 const techSel=document.getElementById('ucTechSelect');
@@ -890,19 +907,34 @@ const puesto=toTitleCase(puestoRaw);
 const description=descriptionRaw;
 const contacto=contactoRaw;
 
+// El botón se bloquea ANTES de cualquier petición (antes se bloqueaba hasta después
+// de guardar los catálogos, y en ese hueco un doble clic duplicaba el envío).
+const btn=document.getElementById('ucSubmitBtn');
+userSubmitting=true;
+btn.disabled=true; btn.textContent='Enviando…';
+
+try{
+// Los catálogos (departamentos, solicitantes) son "mejor esfuerzo": si fallan, el
+// ticket se envía igual, porque el ticket guarda su propia copia en texto de
+// solicitante/departamento/puesto. Lo importante para el usuario es que su
+// solicitud llegue; el catálogo se puede corregir después desde Catálogos.
 let department=deptValue;
 if(department==='__new__'){
 department=toTitleCase(newDeptRaw);
 if(!DEPTS.some(d=>d.name.toLowerCase()===department.toLowerCase())){
+try{
 await sbPost('departments',{name:department});
 DEPTS.push({name:department});
+}catch(e){ console.error('No se pudo agregar el departamento al catálogo:',e); }
 }
 }
 
 if(isNewName){
 if(!REQUESTERS.some(r=>r.name.toLowerCase()===requester.toLowerCase())){
+try{
 await sbPost('requesters',{name:requester,department,puesto});
 REQUESTERS.push({name:requester,department,puesto});
+}catch(e){ console.error('No se pudo agregar al solicitante al catálogo:',e); }
 }
 } else {
 // Si el usuario ya existía pero corrigió su departamento, también actualizamos el catálogo maestro.
@@ -914,9 +946,6 @@ existing.department=department;
 }catch(e){ console.error('No se pudo actualizar el catálogo de solicitantes:',e); }
 }
 }
-
-const btn=document.getElementById('ucSubmitBtn');
-btn.disabled=true; btn.textContent='Enviando…';
 
 const id=await nextId();
 const tech=techValue==='__none__'?'':techValue;
@@ -938,6 +967,24 @@ document.getElementById('userCard').innerHTML=`
      <button class="btn" id="ucNewTicketBtn" style="margin:0 auto;">Reportar otro problema</button>
    </div>`;
 document.getElementById('ucNewTicketBtn').addEventListener('click',resetUserForm);
+}catch(e){
+// Solo llega aquí si falló el guardado del TICKET (lo demás ya se maneja arriba).
+// El formulario NO se borra: el usuario conserva lo que escribió y puede reintentar.
+console.error('Error al enviar la solicitud:',e);
+const esTimeout=/TIMEOUT/.test(e&&e.message||'');
+// Ojo con el timeout: cortamos la espera a los 12 s, pero el servidor pudo haber
+// guardado el ticket de todos modos. Por eso pedimos revisar antes de reenviar.
+const msg=esTimeout
+?'La conexión se cortó mientras se guardaba. Puede que tu solicitud SÍ se haya registrado: revisa en "Seguimiento de ticket" con tu nombre antes de enviarla otra vez.'
+:'No se pudo enviar tu solicitud. Tus datos siguen en el formulario: verifica tu conexión e intenta de nuevo.';
+showUserFormError(msg);
+showToast('No se pudo enviar la solicitud');
+}finally{
+userSubmitting=false;
+// Si hubo éxito, el botón ya no existe en pantalla (se reemplazó por el mensaje
+// de éxito); reactivarlo no afecta. Si hubo error, el usuario puede reintentar.
+btn.disabled=false; btn.textContent='Enviar solicitud';
+}
 }
 
 function resetUserForm(){
@@ -1462,6 +1509,7 @@ modal.innerHTML=`
      <div class="field"><label>Colaborador asignado (opcional)</label><select id="newTechnician"><option value="">Sin asignar</option>${techOpts}</select></div>
    </div>
    <hr class="divider">
+   <div class="form-error" id="modalError"></div>
    <div class="btn-row"><button class="btn" id="saveNewTicketBtn">Guardar ticket</button><button class="btn secondary" id="cancelNewTicketBtn">Cancelar</button></div>`;
 document.getElementById('newCreatedAt').value=nowLocalInputValue();
 document.getElementById('reqSelect').addEventListener('change',e=>{
@@ -1476,34 +1524,54 @@ document.getElementById('saveNewTicketBtn').addEventListener('click',saveNewTick
 openModal();
 }
 async function saveNewTicket(){
+if(modalSaving) return; // evita doble clic
 const sel=document.getElementById('reqSelect');
 let requester='',department='';
 const puesto=toTitleCase(document.getElementById('newPuesto').value.trim());
-if(sel.value==='__new__'){
+const isNewReq=sel.value==='__new__';
+// 1) PRIMERO se valida todo, sin tocar la base de datos. Antes el solicitante nuevo
+//    se guardaba en el catálogo aunque luego faltara la descripción y el ticket no se creara.
+if(isNewReq){
 requester=toTitleCase(document.getElementById('newReqName').value.trim());
 department=document.getElementById('newReqDept').value;
-if(!requester){showToast('Escribe el nombre del usuario nuevo');return;}
-if(!department){showToast('Selecciona el departamento');return;}
-if(!REQUESTERS.some(r=>r.name.toLowerCase()===requester.toLowerCase())){
-setSyncDot('busy'); await sbPost('requesters',{name:requester,department,puesto}); REQUESTERS.push({name:requester,department,puesto}); setSyncDot('ok');
-}
-} else if(!sel.value){showToast('Selecciona o agrega un usuario');return;}
+if(!requester){showModalError('Escribe el nombre del usuario nuevo');return;}
+if(!department){showModalError('Selecciona el departamento');return;}
+} else if(!sel.value){showModalError('Selecciona o agrega un usuario');return;}
 else{requester=sel.value;department=sel.selectedOptions[0].dataset.dept||'';}
 const description=document.getElementById('newDescription').value.trim();
-if(!description){showToast('Describe el problema');return;}
+if(!description){showModalError('Describe el problema');return;}
 const createdRaw=document.getElementById('newCreatedAt').value;
-if(!createdRaw){showToast('Indica la fecha y hora');return;}
+if(!createdRaw){showModalError('Indica la fecha y hora');return;}
 const contacto=document.getElementById('newContacto').value.trim();
-setSyncDot('busy');
+
+// 2) Ya validado: se bloquea la ventana (modalSaving impide cerrarla a medio guardar).
+const saveBtn=document.getElementById('saveNewTicketBtn');
+modalSaving=true; saveBtn.disabled=true; saveBtn.textContent='Guardando…'; setSyncDot('busy');
+showModalError('');
+try{
+// El catálogo es "mejor esfuerzo": si falla, el ticket igual guarda su copia en texto.
+if(isNewReq&&!REQUESTERS.some(r=>r.name.toLowerCase()===requester.toLowerCase())){
+try{ await sbPost('requesters',{name:requester,department,puesto}); REQUESTERS.push({name:requester,department,puesto}); }
+catch(e){ console.error('No se pudo agregar al solicitante al catálogo:',e); }
+}
 const id=await nextId();
 const ticket={id,requester,department,puesto,contacto,description,priority:document.getElementById('newPriority').value,status:'Abierto',technician:document.getElementById('newTechnician').value||'',created_at:new Date(createdRaw).toISOString(),resolved_at:null,log:[{at:new Date().toISOString(),text:'Ticket creado'}]};
 await sbPost('tickets',ticket);
 TICKETS.unshift(ticket);
-setSyncDot('ok');
+setSyncDot('ok'); modalSaving=false;
 sendTicketEmail(ticket);
 closeModal();
 showToast(`Ticket ${id} registrado`);
 refreshAllViews();
+}catch(e){
+console.error(e);
+modalSaving=false; setSyncDot('err');
+saveBtn.disabled=false; saveBtn.textContent='Guardar ticket';
+const esTimeout=/TIMEOUT/.test(e&&e.message||'');
+showModalError(esTimeout
+?'Se cortó la conexión al guardar. Puede que el ticket SÍ se haya creado: revisa la lista de tickets antes de reintentar.'
+:'No se guardó: '+String(e.message||e).slice(0,160));
+}
 }
 
 /* ---- Sincronizar catálogo maestro de solicitantes al corregir datos en un ticket ---- */
