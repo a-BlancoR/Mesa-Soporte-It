@@ -18,6 +18,7 @@ como app (PWA), con base de datos en Supabase y notificaciones push.
 | `sql/2026-10-29-paso1-endurecer-rls.sql` | Seguridad: solo las cuentas de la tabla `admins` administran; el público solo crea tickets "Abierto/Media", lee catálogos y busca con `buscar_tickets()`. |
 | `sql/2026-10-29-paso2-quitar-ticket-lookup.sql` | Elimina la vista `ticket_lookup`. Ejecutar **después** de publicar el `index.html` que usa `buscar_tickets()`. |
 | `sql/2026-10-29-paso4-buscar-folio-completo.sql` | El seguimiento acepta el folio completo (`TK-2026-0317`), los últimos dígitos o el nombre completo. |
+| `sql/2026-10-29-paso5-anti-bots.sql` | Límites de frecuencia para el público (tickets, catálogos, búsquedas), campo trampa y tiempo mínimo de llenado, y tabla `registro_actividad` (IP y navegador de cada ticket, solo admins). |
 | `sql/2026-10-29-paso3-folios-automaticos.sql` | El folio lo asigna la base de datos al guardar (trigger `asignar_folio`), saltando folios ya ocupados. El formulario público usa `crear_ticket()`. |
 
 ## Administradores

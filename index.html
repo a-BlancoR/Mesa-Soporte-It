@@ -853,6 +853,18 @@ if(puestoInput) puestoInput.value='';
 };
 }
 
+let ucFormMostradoEn=0; // ver resetUserForm (defensa contra bots por tiempo de llenado)
+// Extrae el mensaje que manda Supabase cuando una regla del servidor rechaza la
+// petición. Los rechazos "esperados" usan los códigos PT429 (demasiadas
+// solicitudes, HTTP 429) y 22023 (dato inválido); el resto de errores técnicos
+// no se muestra tal cual al usuario.
+function mensajeDelServidor(e){
+try{
+const j=JSON.parse(e&&e.message||'');
+if(j&&j.message&&(j.code==='PT429'||j.code==='22023')) return j.message;
+}catch(_){}
+return '';
+}
 // Candado contra doble clic: mientras una solicitud se está enviando, un segundo
 // toque al botón no hace nada (antes podía crear dos tickets iguales).
 let userSubmitting=false;
@@ -947,7 +959,11 @@ const tech=techValue==='__none__'?'':techValue;
 markChange();
 const res=await sbRpc('crear_ticket',{
 p_requester:requester,p_department:department,p_puesto:puesto,
-p_contacto:contacto,p_description:description,p_technician:tech
+p_contacto:contacto,p_description:description,p_technician:tech,
+// Defensas contra bots (las revisa el servidor): campo trampa invisible que
+// una persona nunca llena, y cuánto tardó en llenarse el formulario.
+p_sitio:(document.getElementById('ucSitioWeb')||{}).value||null,
+p_ms:ucFormMostradoEn?Math.round(Date.now()-ucFormMostradoEn):null
 });
 const fila=Array.isArray(res)?res[0]:res;
 if(!fila||!fila.id) throw new Error('El servidor no devolvió el folio del ticket.');
@@ -970,11 +986,14 @@ document.getElementById('ucNewTicketBtn').addEventListener('click',resetUserForm
 // El formulario NO se borra: el usuario conserva lo que escribió y puede reintentar.
 console.error('Error al enviar la solicitud:',e);
 const esTimeout=/TIMEOUT/.test(e&&e.message||'');
+// Si el servidor rechazó por una regla (límite de frecuencia, envío demasiado
+// rápido, datos inválidos), mostramos SU mensaje, que ya viene en español.
+const delServidor=mensajeDelServidor(e);
 // Ojo con el timeout: cortamos la espera a los 12 s, pero el servidor pudo haber
 // guardado el ticket de todos modos. Por eso pedimos revisar antes de reenviar.
 const msg=esTimeout
 ?'La conexión se cortó mientras se guardaba. Puede que tu solicitud SÍ se haya registrado: revisa en "Seguimiento de ticket" con tu nombre antes de enviarla otra vez.'
-:'No se pudo enviar tu solicitud. Tus datos siguen en el formulario: verifica tu conexión e intenta de nuevo.';
+:(delServidor||'No se pudo enviar tu solicitud. Tus datos siguen en el formulario: verifica tu conexión e intenta de nuevo.');
 showUserFormError(msg);
 showToast('No se pudo enviar la solicitud');
 }finally{
@@ -1002,7 +1021,14 @@ document.getElementById('userCard').innerHTML=`
    <div class="field"><label>Describe el problema *</label><textarea id="ucDescription" rows="4" placeholder="Explica lo que está pasando con detalle…" required></textarea></div>
    <div class="field"><label>Personal asignado sugerido *</label><select id="ucTechSelect" required><option value="">— Selecciona una opción —</option><option value="__none__">Sin preferencia</option></select></div>
    <div class="field"><label>Número de contacto *</label><input type="tel" id="ucContacto" placeholder="Teléfono o extensión para contactarte" required></div>
+   <div aria-hidden="true" style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden;">
+     <label for="ucSitioWeb">Deja este campo vacío</label>
+     <input type="text" id="ucSitioWeb" name="sitio_web_empresa" tabindex="-1" autocomplete="off">
+   </div>
    <div class="btn-row"><button class="btn" id="ucSubmitBtn" style="width:100%;">Enviar solicitud</button></div>`;
+// Momento en que se mostró el formulario: una persona tarda varios segundos en
+// llenarlo; un bot lo llena y envía al instante. El servidor rechaza < 3 s.
+ucFormMostradoEn=Date.now();
 populateUserScreen();
 document.getElementById('ucSubmitBtn').addEventListener('click',submitUserTicket);
 }
@@ -1087,7 +1113,8 @@ async function searchTicketTracking(){
     renderTrackResults(Array.isArray(results)?results:[]);
   }catch(e){
     console.error(e);
-    box.innerHTML='<p class="small-note" style="margin-top:14px;">No se pudo realizar la búsqueda. Verifica tu conexión e intenta de nuevo.</p>';
+    const delServidor=mensajeDelServidor(e);
+    box.innerHTML='<p class="small-note" style="margin-top:14px;">'+escapeHtml(delServidor||'No se pudo realizar la búsqueda. Verifica tu conexión e intenta de nuevo.')+'</p>';
   }finally{
     btn.disabled=false;btn.textContent='Buscar';
   }
@@ -2479,7 +2506,7 @@ attemptInitialLoad();
    Cada 5 minutos, y al volver a la pestaña, se descarga el index.html publicado
    (sin caché) y se compara su APP_VERSION con la de esta pestaña. Si cambió,
    se muestra un botón para recargar. Al publicar cambios, SUBE APP_VERSION. */
-const APP_VERSION='2026-10-29.4';
+const APP_VERSION='2026-10-29.5';
 let _avisoVersion=false;
 async function revisarVersionNueva(){
 if(_avisoVersion) return;
