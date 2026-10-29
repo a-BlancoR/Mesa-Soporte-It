@@ -17,11 +17,15 @@
 // IMPORTANTE: cada vez que cambies este archivo, sube el número de CACHE_NAME
 // para que los dispositivos borren la caché anterior.
 
-const CACHE_NAME = 'mesa-ayuda-v2';
+const CACHE_NAME = 'mesa-ayuda-v3';
 const APP_SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
+  // cache: 'reload' = descargar del servidor, sin usar la caché HTTP del navegador
+  // (GitHub Pages permite al navegador guardar archivos hasta 10 min).
+  e.waitUntil(caches.open(CACHE_NAME).then((cache) =>
+    cache.addAll(APP_SHELL.map((u) => new Request(u, { cache: 'reload' })))
+  ));
   self.skipWaiting();
 });
 
@@ -48,9 +52,12 @@ self.addEventListener('fetch', (e) => {
   };
 
   // Navegación (abrir la página): primero la red, la caché solo como respaldo sin internet.
+  // cache: 'no-store' evita que el navegador entregue una copia guardada del HTML
+  // (GitHub Pages la deja vigente hasta 10 min); así al abrir/recargar siempre
+  // llega la versión más nueva.
   if (e.request.mode === 'navigate') {
     e.respondWith(
-      fetch(e.request)
+      fetch(e.request, { cache: 'no-store' })
         .then(guardar)
         .catch(() => caches.match(e.request).then((c) => c || caches.match('./index.html')))
     );
